@@ -246,6 +246,17 @@ codex login status
 
 未登入就執行 `codex login`，由使用者在瀏覽器完成登入。完成：`codex login status` 顯示已登入。接著照 skill `codex-dispatch` 派一個小任務確認可用，例如請它列出 `$ws` 的資料夾結構並寫到檔案，確認檔案內容正確。登入遭拒時停止並詢問使用者。
 
+使用 Claude Code 時，另裝 OpenAI 官方外掛 Codex plugin for Claude Code（https://github.com/openai/codex-plugin-cc ，Apache-2.0），讓使用者可直接用 `/codex:review`（唯讀審查）、`/codex:rescue`（交辦工作）、`/codex:status`、`/codex:result` 指令。安裝方式以該 repo README 為準，2026-10-07 版本為在 Claude Code 中依序執行：
+
+```
+/plugin marketplace add openai/codex-plugin-cc
+/plugin install codex@openai-codex
+/reload-plugins
+/codex:setup
+```
+
+完成：`/codex:setup` 回報 Codex 可用。外掛需要 Node.js 18.18 以上。用量計入使用者的 Codex 額度。
+
 ## 步驟 8：最終驗證與回報
 
 1. 請使用者關閉並重新開啟 Claude Code，在工作資料夾開新對話。
