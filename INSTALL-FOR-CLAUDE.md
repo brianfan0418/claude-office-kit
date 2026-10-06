@@ -257,6 +257,17 @@ codex login status
 
 完成：`/codex:setup` 回報 Codex 可用。外掛需要 Node.js 18.18 以上。用量計入使用者的 Codex 額度。
 
+## 步驟 7.5：Anthropic 官方法務外掛（使用者處理合約或法務時）
+
+Anthropic 官方外掛 `legal`（https://github.com/anthropics/knowledge-work-plugins/tree/main/legal ，Apache-2.0）提供合約審閱 `/review-contract`、保密協議分級 `/triage-nda`、法遵檢查等功能，審閱依組織自訂的審閱手冊進行。安裝方式以該 README 為準，2026-10-07 版本為：
+
+```
+claude plugin marketplace add anthropics/knowledge-work-plugins
+claude plugin install legal@knowledge-work-plugins
+```
+
+該外掛的預設範例為美國法；用於其他法域前，須以本工具包 `contracts/playbook/playbook.md` 為底，由使用者或法務人員填入公司立場與適用法規，寫成該外掛讀取的審閱手冊。外掛與本工具包的 `contract-review` 並用時，一律套用 `skills/evidence-discipline` 的引用規則。完成：外掛指令出現在 Claude Code 的指令清單中。
+
 ## 步驟 8：最終驗證與回報
 
 1. 請使用者關閉並重新開啟 Claude Code，在工作資料夾開新對話。
