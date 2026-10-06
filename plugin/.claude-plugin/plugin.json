@@ -1,0 +1,10 @@
+{
+  "name": "office-work-kit",
+  "version": "0.1.0",
+  "description": "文件證據、交接、獨立核對與選用工具。",
+  "repository": "https://github.com/brianfan0418/claude-office-kit",
+  "license": "MIT",
+  "author": {
+    "name": "Office kit contributors"
+  }
+}

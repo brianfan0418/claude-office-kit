@@ -1,59 +1,47 @@
 # claude-office-kit
 
-讓 Claude 管好自己的工具包：一組給 Claude 讀的規則、技能與安全攔截，使用者只需要對 Claude 說「請讀 `INSTALL-FOR-CLAUDE.md` 並照做」，Claude 會自己完成安裝。
+供 Claude 與使用者逐項選用的 AI 工作資源目錄，包含規則範本、skills、hooks、文件轉檔、Codex 派工與 Outlook 監看。取得本 repo 不代表同意安裝全部資源。
 
-它處理四件事：
+先請 Claude 讀 [GUIDE-FOR-CLAUDE.md](GUIDE-FOR-CLAUDE.md)，了解工作內容、Claude Code 或桌面版 Cowork、既有工具與設定，再提出採用建議，由使用者逐項決定。既有規則與流程先比對，避免重複安裝。
 
-- Claude 不再每次開工都忘記前情：進度寫在固定的交接檔，開場自動載入。
-- 事實有出處：每個事實陳述附檔案、頁碼或條號、原文引句，找不到就寫「未載明」。
-- 做與驗分開：產出者與驗收者是不同的對話，驗收者不帶前情，依完成標準逐項核對。
-- 大量或機械性的工作交給 Codex 處理，節省 Claude 額度。
+## 資源與適用情境
 
-## 適用對象
+| 資源 | 用途 | 適用情境 |
+|---|---|---|
+| [規則範本](templates/CLAUDE.md) | 證據、授權、落檔與回覆原則 | 尚無工作規則，或需要整理既有規則 |
+| [handoff-docs](skills/handoff-docs/SKILL.md) | 撰寫可檢查的規則、交辦與交接文件 | 多次對話接手同一項工作 |
+| [project-docs](skills/project-docs/SKILL.md) | 專案文件結構與範本 | 需要追蹤進度、決策與下一步 |
+| [evidence-discipline](skills/evidence-discipline/SKILL.md) | 原文引用、查證與核對表 | 正式文件、事實與數字須可追溯 |
+| [maker-checker](skills/maker-checker/SKILL.md) | 由另一個不帶前情的對話驗收 | 抽取欄位、審閱與批次修改需要獨立核對 |
+| [codex-dispatch](skills/codex-dispatch/SKILL.md) | 在 Windows 派工作業給 Codex | 大量讀檔、批次處理或第二意見，且已有企業訂閱與 CLI |
+| [doc-library](skills/doc-library/SKILL.md) | 文件收錄、查詢、OCR 核對與健檢 | 經常查詢 Word、PDF、Excel、PowerPoint |
+| [session_start.py](hooks/session_start.py) | 開場載入交接檔與未完成待辦 | 工作常跨越多個對話 |
+| [block_dangerous.py](hooks/block_dangerous.py) | 攔截部分破壞性指令與自身設定修改 | Claude 有執行指令或改檔權限；仍須搭配平台權限控制 |
+| [install_hooks.py](hooks/install_hooks.py)、[設定範例](hooks/settings.example.json) | 備份並合併兩個 hooks 的使用者設定 | 使用 Claude Code 且已決定採用兩個 hooks |
+| [convert_docs.py](tools/convert_docs.py)、[說明](tools/README-convert-docs.md) | 原檔唯讀，產生 Markdown、索引與來源資訊 | 需要全文查詢、引用或合約登錄；先盤點既有 OCR 工具 |
+| [outlook-watch.py](tools/outlook-watch.py)、[說明](tools/README-outlook-watch.md) | 在 Windows 以 Outlook COM 監看新信與附件 | 已使用傳統版 Outlook，需供 Claude 讀取新信提示 |
+| [plugin/](plugin/) | 依官方結構封裝 skills、hooks 與所需工具 | 在 Cowork 使用選定資源；安裝前依指南裁減未採用項目 |
+| [build_plugin.py](tools/build_plugin.py) | 從原始檔重建外掛副本 | 維護或封裝外掛，避免副本與原始檔不同步 |
 
-- Windows 10 或 11。
-- 使用 Claude Code，或 Claude 桌面版中使用 Claude Code 的功能（桌面版是否讀取這些檔案未在 Windows 實測）。
-- Codex CLI 為選用；沒有 Codex 時，派工改用 Claude 的 subagent。
-- 需要 Python 3.10 以上與 Git for Windows；缺少時安裝程序會請使用者同意後安裝。
-- 不需要會用命令列：指令由 Claude 執行。
+每項資源的「Claude Code 用法」與「Claude 桌面版 Cowork 用法」均列於[指南](GUIDE-FOR-CLAUDE.md)。Python、Git、Codex、OCR 與 Outlook 只在所選資源需要時檢查，缺少時先說明用途，由使用者決定是否安裝。
 
-## 使用方式
+## 合約資源
 
-1. 取得本資料夾（下載壓縮檔，或 `git clone`）。
-2. 開啟 Claude Code，對 Claude 說：「請讀這份並照做」，並指向 `INSTALL-FOR-CLAUDE.md`。
-3. 依 Claude 的說明回答問題、同意或拒絕各項動作。安裝完成時 Claude 會回報裝了什麼、備份在哪、如何復原。
+合約主檔、登錄／比對／初審 skills、台灣法審閱手冊與面板已拆至獨立 repo：[claude-contract-kit](https://github.com/brianfan0418/claude-contract-kit)。需要文件轉檔時，可搭配本 repo 的 doc-library；兩個 repo 可以分別使用。
 
-安裝程序不會覆蓋既有檔案：既有的 `CLAUDE.md` 與 `settings.json` 先備份再合併。
+## 驗證
 
-## 目錄
+在本 repo 根目錄執行：
 
-| 路徑 | 內容 |
-|---|---|
-| `INSTALL-FOR-CLAUDE.md` | 給 Claude 的安裝指示：檢查環境、建立工作資料夾、安裝規則與 skills、掛上 hooks、git 版本控制、驗證 |
-| `templates/CLAUDE.md` | 個人規則範本：證據紀律、理解目的、可還原才直接做、對外行為先給草稿、刪除走資源回收筒、做與驗分開、落檔位置、回覆格式 |
-| `skills/handoff-docs/` | 寫給 AI 看的文件（規則、交辦、交接單）的寫法 |
-| `skills/project-docs/` | 專案固定文件結構與範本（HANDOFF、ROADMAP、CHANGELOG、決策紀錄） |
-| `skills/codex-dispatch/` | 在 Windows 上用 `codex exec` 派工與驗收 |
-| `skills/maker-checker/` | 做與驗分開的流程與驗收單 |
-| `skills/evidence-discipline/` | 證據紀律作業手冊：引用表、自我核對、獨立核對 |
-| `hooks/session_start.py` | SessionStart hook：開場載入交接檔前 60 行與未完成待辦 |
-| `hooks/block_dangerous.py` | PreToolUse hook：攔截遞迴刪除、格式化磁碟、強制推送、`git reset --hard`、修改 Claude 自己的設定 |
-| `hooks/test_block_dangerous.py` | 攔截規則的單元測試 |
-| `hooks/install_hooks.py` | 複製 hooks 並合併進 `settings.json`（保留既有設定、先備份） |
-| `hooks/settings.example.json` | hooks 設定範例 |
-| `skills/doc-library/` | 文件收錄、查詢與健檢，引用原文並對照 OCR 影像 |
-| `tools/` | `convert_docs.py`、`outlook-watch.py` 與說明 `README-convert-docs.md`、`README-outlook-watch.md` |
-| `contracts/` | 合約與法務管理的內容，見 [contracts/README.md](contracts/README.md) |
-
-## 測試
-
-```powershell
-python -m unittest discover -s hooks
-python -m unittest discover -s contracts
-python -m unittest discover -s contracts/dashboard
-python -m unittest discover -s tools
+```text
+python3 -m unittest discover -s hooks
+python3 -m unittest discover -s tools
+python3 tools/build_plugin.py --check
+claude plugin validate plugin
 ```
+
+Windows 可將 `python3` 換成已確認可用的 `python` 或 `py -3`。測試涵蓋範圍與未實測環境見 [docs/HANDOFF.md](docs/HANDOFF.md)。外掛產生器的 `--check` 只比對副本，不修改檔案。
 
 ## 授權
 
-MIT，全文見 `LICENSE`。
+MIT，見 [LICENSE](LICENSE)。

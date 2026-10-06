@@ -48,7 +48,7 @@ frontmatter 是 Markdown 檔最前面、以兩行 `---` 包起來的一段「欄
 - 可檢查：欄位固定，缺欄或過期可由腳本機械檢查，不靠印象。
 - 可篩選：業務欄位集中在同一個位置。
 
-轉檔通用鍵為 `converter`、`ocr`、`ocr_engine`、`ocr_pages`、`source_path`、`source_sha256`、`source_modified`、`converted_at`、`pages`、`title`；工具另記錄轉檔警告與複核旗標。業務欄位由各領域定義；合約見 [合約欄位定義](https://github.com/brianfan0418/claude-contract-kit/blob/main/schema/fields.json)。轉檔行為與限制見 `<工具包資料夾>/tools/README-convert-docs.md`。
+轉檔通用鍵為 `converter`、`ocr`、`ocr_engine`、`ocr_pages`、`source_path`、`source_sha256`、`source_modified`、`converted_at`、`pages`、`title`；工具另記錄轉檔警告與複核旗標。業務欄位由各領域定義；合約見 [合約欄位定義](https://github.com/brianfan0418/claude-contract-kit/blob/main/schema/fields.json)。轉檔行為與限制見 `${CLAUDE_PLUGIN_ROOT}/tools/README-convert-docs.md`。
 
 - 只填原文明文寫出的內容。原文沒寫、看不出來就依領域規則留空或標示未載明，不推算。
 - 引用一律存於 `citations`，格式與必填條件依領域定義；合約依上述 schema 與 contract-intake 流程處理。
@@ -72,13 +72,13 @@ frontmatter 是 Markdown 檔最前面、以兩行 `---` 包起來的一段「欄
 5. 向使用者報告盤點結果與建議的路，由使用者決定。選項：
    - 沿用既有輸出：`--ocr-backend existing-text --ocr-dir <資料夾> --ocr-engine-name "<工具名稱>"`。
    - 用既有工具補做 OCR（例如在 FineReader 或 Acrobat 內批次處理），輸出放到 OCR 輸出資料夾，再用上一項收錄。
-   - 以 docling 本機 OCR：`--ocr-backend docling --ocr-device cuda`。GPU 支援依官方文件，專案內未實測，細節與限制見 `<工具包資料夾>/tools/README-convert-docs.md`。
+   - 以 docling 本機 OCR：`--ocr-backend docling --ocr-device cuda`。GPU 支援依官方文件，專案內未實測，細節與限制見 `${CLAUDE_PLUGIN_ROOT}/tools/README-convert-docs.md`。
 6. 不為了「能 OCR」就安裝新軟體；先確認既有路徑不可用。
 
 ## 操作一：收錄（ingest）
 
 1. 確認原檔資料夾與衍生資料夾路徑；第一次使用先做上一節盤點。
-2. 執行 `python "<工具包資料夾>/tools/convert_docs.py" <原檔資料夾> -o <衍生資料夾>`（參數見 `<工具包資料夾>/tools/README-convert-docs.md`）。增量：原檔沒變的會跳過。
+2. 執行 `python "${CLAUDE_PLUGIN_ROOT}/tools/convert_docs.py" <原檔資料夾> -o <衍生資料夾>`（參數見 `${CLAUDE_PLUGIN_ROOT}/tools/README-convert-docs.md`）。增量：原檔沒變的會跳過。
 3. 讀工具的結束摘要與 `log.md` 新增的行。逐一處理：
    - 失敗：向使用者回報檔名與原因，不略過不提。
    - 不支援的格式：列給使用者。
@@ -107,7 +107,7 @@ frontmatter 是 Markdown 檔最前面、以兩行 `---` 包起來的一段「欄
 
 ## 操作三：健檢（lint）
 
-先跑機械檢查：`python "<工具包資料夾>/tools/convert_docs.py" <原檔資料夾> -o <衍生資料夾> --lint`。它檢查：
+先跑機械檢查：`python "${CLAUDE_PLUGIN_ROOT}/tools/convert_docs.py" <原檔資料夾> -o <衍生資料夾> --lint`。它檢查：
 
 - 原檔已變但衍生檔未更新（`過期`）
 - 原檔不存在的衍生檔（`孤兒頁`）、原檔沒有衍生檔（`未轉換`）
@@ -136,6 +136,6 @@ frontmatter 是 Markdown 檔最前面、以兩行 `---` 包起來的一段「欄
 
 ## 工具使用的限制
 
-- 轉換工具不能保證完整（頁首頁尾、註解、文字方塊、圖片內文字、Word 自動編號可能缺漏或不同），限制清單見 `<工具包資料夾>/tools/README-convert-docs.md`。
+- 轉換工具不能保證完整（頁首頁尾、註解、文字方塊、圖片內文字、Word 自動編號可能缺漏或不同），限制清單見 `${CLAUDE_PLUGIN_ROOT}/tools/README-convert-docs.md`。
 - PDF 頁碼為檔案的第幾頁，不一定等於頁面上印的頁碼；引用時兩者不同要註明。
 - Word 的頁數隨版面變動，引用 Word 以條號與標題為準。
