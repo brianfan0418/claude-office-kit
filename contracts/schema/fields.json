@@ -149,7 +149,7 @@
       "required": false,
       "from_text": true,
       "description": "不續約或終止須提前通知的天數；通知截止日 = 到期日 - 通知期限，由面板計算。",
-      "source": "CUAD:Notice Period To Terminate Renewal"
+      "source": "CUAD:Notice to Terminate Renewal"
     },
     {
       "name": "termination_for_convenience",
@@ -158,7 +158,7 @@
       "required": false,
       "from_text": true,
       "description": "有（雙方）／有（僅本方）／有（僅對方）／無／未載明。",
-      "source": "CUAD:Termination For Convenience",
+      "source": "CUAD:Termination for Convenience",
       "enum": "termination_for_convenience"
     },
     {
@@ -204,7 +204,7 @@
       "required": false,
       "from_text": true,
       "description": "責任上限條款摘要（金額或倍數、例外）；無上限寫「無上限」，未載明寫「未載明」。",
-      "source": "CUAD:Cap On Liability / Uncapped Liability"
+      "source": "CUAD:Cap on Liability / Uncapped Liability"
     },
     {
       "name": "governing_law",
@@ -231,7 +231,7 @@
       "required": false,
       "from_text": true,
       "description": "轉讓、控制權變更限制摘要。",
-      "source": "CUAD:Anti-Assignment / Change Of Control"
+      "source": "CUAD:Anti-Assignment / Change of Control"
     },
     {
       "name": "involves_personal_data",
@@ -628,6 +628,101 @@
         "code": "U",
         "label": "未審"
       }
+    ],
+    "verification_status": [
+      {
+        "code": "U",
+        "label": "未驗證"
+      },
+      {
+        "code": "V",
+        "label": "已驗證"
+      },
+      {
+        "code": "M",
+        "label": "驗證不符"
+      }
     ]
+  },
+  "frontmatter": {
+    "source_path": {
+      "type": "string",
+      "description": "原檔相對於輸入資料夾的路徑"
+    },
+    "source_sha256": {
+      "type": "string",
+      "description": "原檔 SHA-256，64 碼小寫十六進位"
+    },
+    "source_modified": {
+      "type": "string",
+      "description": "原檔修改時間，UTC ISO 8601"
+    },
+    "converter": {
+      "type": "string",
+      "description": "轉換工具與版本"
+    },
+    "converted_at": {
+      "type": "string",
+      "description": "轉換時間，UTC ISO 8601"
+    },
+    "pages": {
+      "type": "integer|null",
+      "description": "PDF 頁數；無固定頁碼者留空"
+    },
+    "ocr": {
+      "type": "boolean|string",
+      "values": [
+        false,
+        "required",
+        "partial",
+        true
+      ],
+      "description": "文字層／尚需 OCR／部分未完成／已使用 OCR"
+    },
+    "ocr_engine": {
+      "type": "string",
+      "description": "OCR 工具與版本"
+    },
+    "ocr_pages": {
+      "type": "array",
+      "description": "OCR 頁碼清單"
+    },
+    "ocr_source": {
+      "type": "string",
+      "description": "既有 OCR 輸出的相對路徑"
+    },
+    "ocr_source_sha256": {
+      "type": "string",
+      "description": "既有 OCR 輸出指紋"
+    },
+    "title": {
+      "field": "title",
+      "description": "與 fields 的 title 共用同一鍵；轉檔以檔名預填，登錄驗證後覆寫"
+    },
+    "warnings": {
+      "type": "array",
+      "description": "轉換限制與警告"
+    },
+    "needs_review": {
+      "type": "boolean",
+      "description": "重轉設為 true；新版原文驗證完成才設為 false，true 不寫入主檔"
+    },
+    "verification_status": {
+      "type": "enum",
+      "enum": "verification_status",
+      "description": "OCR 尚未對照影像屬未驗證；重轉重設為未驗證"
+    },
+    "verified_at": {
+      "type": "string",
+      "description": "驗證日期"
+    },
+    "verifier_note": {
+      "type": "string",
+      "description": "驗證結果與限制"
+    },
+    "citations": {
+      "type": "array",
+      "description": "每筆單行 JSON 含 field、quote、page 或 clause；page 可空，須有頁碼或條號"
+    }
   }
 }

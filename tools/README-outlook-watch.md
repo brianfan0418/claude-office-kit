@@ -16,6 +16,8 @@ python outlook-watch.py --check
 
 連得上時印出 Outlook 版本；連不上時印出原因與處理步驟，結束碼為 2。
 
+`Items.Restrict` 日期篩選在非英文語系 Outlook 的行為未實測。首次使用時，以已知的新信（收信時間在篩選期間內）比對 JSONL 輸出，確認沒有漏信，再建立排程。
+
 ## 手動執行
 
 ```

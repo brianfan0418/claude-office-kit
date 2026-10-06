@@ -10,9 +10,10 @@
 | .doc、.rtf | 以 Word COM 唯讀開啟，另存成暫存 .docx，再交給 MarkItDown；暫存檔轉完即刪 |
 | .pdf（有文字層） | 逐頁以 MarkItDown 轉換，每頁前加 `<!-- page: N -->` |
 | .pdf（無文字層） | 標記 `ocr: required`，不猜測內容；以 `--ocr-backend` 選擇 OCR 來源（見下節） |
+| .md | 保留內文與領域 frontmatter，重建通用來源鍵；不複製來源的驗證狀態 |
 | 其他格式 | 不處理，執行結束時列出檔名 |
 
-每份衍生檔開頭是 YAML frontmatter，欄位如下。
+每份衍生檔開頭是 YAML frontmatter；欄位定義見 `contracts/schema/fields.json` 的 `frontmatter`，下表說明轉檔行為。
 
 | 欄位 | 內容 |
 |---|---|
@@ -25,10 +26,11 @@
 | `ocr` | `false`（本文來自文字層）、`required`（整份無文字層，尚未 OCR）、`partial`（仍有頁面無文字）、`true`（至少一頁的文字來自 OCR，不是逐字原文） |
 | `ocr_engine`、`ocr_pages` | OCR 引擎與版本；來自 OCR 的頁碼清單 |
 | `ocr_source`、`ocr_source_sha256` | 沿用既有 OCR 輸出時，該輸出檔的相對路徑與指紋 |
-| `title` | 自動推得：本文第一個標題，沒有則用檔名。不是文件的正式名稱 |
+| `title` | 以檔名預填；contract-intake 核對並驗證後覆寫同一鍵，整份 frontmatter 只有一個 title |
 | `warnings` | 轉換可能漏掉的內容（追蹤修訂、頁首頁尾、註解、文字方塊、OCR 風險等） |
 | `needs_review` | 原檔更新後，沿用的業務欄位尚待人工複核 |
-| 業務欄位區 | `doc_type`、`parties`、`effective_date`、`expiry_date`、`status`、`tags`，轉換時留空，由各領域 skill 填寫；重新轉換時原樣保留，也保留自行新增的欄位 |
+| `verification_status` | 新轉與重轉均為「未驗證」；狀態定義見 `contracts/schema/fields.json` |
+| 業務欄位區 | 由各領域定義與填寫；合約見 `contracts/schema/fields.json`；重轉保留領域欄位，但須重新驗證 |
 
 另外產生：
 
@@ -38,7 +40,7 @@
 
 ## 增量規則
 
-以 sha256 判斷：原檔沒變就跳過；原檔變了就重轉，舊版先存進 `_history/`。原檔被刪除時，衍生檔不會自動刪除，由 `--lint` 列為「孤兒頁」。
+以 sha256 判斷：原檔沒變就跳過；原檔變了就重轉，舊版先存進 `_history/`，`verification_status` 重設為「未驗證」、`needs_review` 設為 true。複核新版原文完成後才解除旗標；合約主檔不寫入待複核文件。原檔被刪除時，衍生檔不會自動刪除，由 `--lint` 列為「孤兒頁」。
 
 ## 用法
 

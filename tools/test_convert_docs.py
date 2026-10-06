@@ -75,16 +75,16 @@ class Base(unittest.TestCase):
 
 
 class TestFrontmatter(unittest.TestCase):
-    def test_roundtrip_and_blank_business_fields(self):
+    def test_roundtrip_without_business_defaults(self):
         managed = {"source_path": "a/b.docx", "source_sha256": "ab" * 32, "source_modified": "x",
                    "converter": "markitdown 0.1.8", "converted_at": "y", "pages": 3, "ocr": "required", "ocr_engine": "", "ocr_pages": [], "ocr_source": "", "ocr_source_sha256": "",
-                   "title": "標題: 含冒號與\"引號\"", "warnings": ["w1"], "needs_review": False}
+                   "title": "標題: 含冒號與\"引號\"", "warnings": ["w1"], "needs_review": False,
+                   "verification_status": "未驗證"}
         text = cd.build_frontmatter(managed) + "\n本文\n"
         fm, body = cd.split_frontmatter(text)
         self.assertEqual(cd.parse_managed(fm), managed)
         self.assertEqual(body.strip(), "本文")
-        for k in cd.BUSINESS_KEYS:
-            self.assertIn(f"{k}:", fm)
+        self.assertNotIn("doc_type:", fm)
         self.assertTrue(text.startswith("---\n"))
 
     def test_all_required_fields_present(self):
@@ -114,7 +114,7 @@ class TestIncremental(Base):
         m, _, body = self.fm("sub/甲.docx")
         self.assertEqual(m["source_sha256"], hashlib.sha256(b"v1").hexdigest())
         self.assertEqual(m["source_path"], "sub/甲.docx")
-        self.assertEqual(m["title"], "標題")
+        self.assertEqual(m["title"], "甲")
         self.assertIs(m["ocr"], False)
 
         calls = self.md.call_count
@@ -142,12 +142,56 @@ class TestIncremental(Base):
         f = self.write("a.docx", b"v1")
         self.run_convert()
         p = self.out / "a.docx.md"
-        p.write_text(p.read_text(encoding="utf-8").replace("doc_type:\n", 'doc_type: "NDA"\n'), encoding="utf-8")
+        p.write_text(p.read_text(encoding="utf-8").replace(cd.BUSINESS_MARKER,
+                     cd.BUSINESS_MARKER + '\ndoc_type: "NDA"').replace(
+                     'verification_status: "未驗證"', 'verification_status: "已驗證"'), encoding="utf-8")
         f.write_bytes(b"v2")
         self.run_convert(now=T2)
         m, fm, _ = self.fm("a.docx")
         self.assertIn('doc_type: "NDA"', fm)
         self.assertIs(m["needs_review"], True)
+        self.assertEqual(m["verification_status"], "未驗證")
+
+    def test_reconversion_without_business_values_still_needs_review(self):
+        src = self.write("a.docx", b"v1")
+        self.run_convert()
+        src.write_bytes(b"v2")
+        self.run_convert(now=T2)
+        m, _, _ = self.fm("a.docx")
+        self.assertIs(m["needs_review"], True)
+        self.assertEqual(m["verification_status"], "未驗證")
+
+    def test_markdown_frontmatter_preserved_without_duplicate_title(self):
+        self.write("合約.md", ('---\ntitle: "舊名稱"\ncontract_id: "C-2026-0001"\n'
+                              'verification_status: "已驗證"\ncitations:\n'
+                              '  - {"field":"title","clause":"第1條","quote":"合約"}\n'
+                              '---\n第1條 合約\n').encode("utf-8"))
+        self.run_convert()
+        m, fm, body = self.fm("合約.md")
+        self.assertEqual(m["converter"], "markdown-copy")
+        self.assertEqual(m["title"], "合約")
+        self.assertEqual(m["verification_status"], "未驗證")
+        self.assertEqual(sum(ln.startswith("title:") for ln in fm), 1)
+        self.assertEqual(sum(ln.startswith("verification_status:") for ln in fm), 1)
+        self.assertIn('contract_id: "C-2026-0001"', fm)
+        self.assertIn('  - {"field":"title","clause":"第1條","quote":"合約"}', fm)
+        self.assertEqual(body.strip(), "第1條 合約")
+
+    def test_legacy_business_verification_is_reset(self):
+        src = self.write("a.docx", b"v1")
+        self.run_convert()
+        out = self.out / "a.docx.md"
+        text = out.read_text(encoding="utf-8").replace('verification_status: "未驗證"\n', '')
+        text = text.replace(cd.BUSINESS_MARKER, '# --- 業務欄位：由各領域 skill 填寫，重新轉換時原樣保留 ---\n'
+                            'verification_status: "已驗證"\ntitle: "已驗證的舊標題"')
+        out.write_text(text, encoding="utf-8")
+        src.write_bytes(b"v2")
+        self.run_convert(now=T2)
+        m, fm, _ = self.fm("a.docx")
+        self.assertIs(m["needs_review"], True)
+        self.assertEqual(m["verification_status"], "未驗證")
+        self.assertEqual(sum(ln.startswith("title:") for ln in fm), 1)
+        self.assertEqual(sum(ln.startswith("verification_status:") for ln in fm), 1)
 
     def test_source_never_modified(self):
         f = self.write("a.docx", b"keep")
@@ -212,7 +256,7 @@ class TestIndexLog(Base):
         self.write("c.xlsx", b"2")
         self.run_convert()
         idx = (self.out / "index.md").read_text(encoding="utf-8")
-        self.assertIn("[合約標題](a%20b.docx.md)", idx)
+        self.assertIn("[a b](a%20b.docx.md)", idx)
         self.assertIn("2026-10-07", idx)
         self.assertEqual(len([ln for ln in idx.splitlines() if ln.startswith("- [")]), 2)
         log = (self.out / "log.md").read_text(encoding="utf-8")
@@ -482,7 +526,7 @@ class TestRealConversion(Base):
         s = self.run_convert()
         self.assertEqual((s["new"], s["failed"]), (2, 0))
         m, _, body = self.fm("a.docx")
-        self.assertEqual(m["title"], "測試合約")
+        self.assertEqual(m["title"], "a")
         self.assertIn("第一條 付款期限為三十日。", body)
         m, _, body = self.fm("b.pdf")
         self.assertEqual(m["pages"], 2)

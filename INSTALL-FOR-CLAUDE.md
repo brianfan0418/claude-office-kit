@@ -16,20 +16,28 @@
 
 ## 步驟 0：確認工具包資料夾
 
-做法：確認本檔所在資料夾內有 `templates\CLAUDE.md`、`skills\`、`hooks\`。
+先確認工作區位置（預設 `%USERPROFILE%\AI工作區`）與本檔所在的工具包位置。以 `$ws` 表示工作區、`$cl` 表示 Claude 設定資料夾、`$kit` 表示工具包的本機絕對路徑。建議在 Git 已可用且取得安裝同意後，以 `git clone <工具包 Git 網址> "$ws\tools\claude-office-kit"` 取得工具包；已有下載副本可直接使用其位置。
+
+以下每段 PowerShell 都重新設定三個路徑；若使用者選擇其他位置，執行前把該段的 `$ws`、`$kit` 換成確認過的完整路徑，不依賴前一段的 shell 狀態。檢查 `$kit` 內的 `templates\CLAUDE.md`、`skills\`、`hooks\block_dangerous.py`。
 
 ```powershell
-Test-Path templates\CLAUDE.md, skills, hooks\block_dangerous.py
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
+Test-Path "$kit\templates\CLAUDE.md", "$kit\skills", "$kit\hooks\block_dangerous.py"
 ```
 
 完成：三項都是 True。
-停下問使用者：缺檔，或你只拿到本檔而沒有整個資料夾。請使用者提供工具包的壓縮檔或 GitHub 網址，下載到 `%USERPROFILE%\claude-office-kit` 後再繼續。
+停下問使用者：缺檔，或你只拿到本檔而沒有整個資料夾。請使用者提供工具包的壓縮檔或 GitHub 網址，下載到 `$ws\tools\claude-office-kit`，確認 `$kit` 指向該處後再繼續。
 
 ## 步驟 1：檢查環境
 
 逐項檢查並記錄結果：
 
 ```powershell
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
 (Get-CimInstance Win32_OperatingSystem).Caption
 python --version
 git --version
@@ -44,7 +52,7 @@ Get-Process olk -ErrorAction SilentlyContinue
 | 項目 | 需要 | 判斷 |
 |---|---|---|
 | Windows | Windows 10 或 11 | Caption 含 Windows 10 或 11 |
-| Python | 必要，3.8 以上 | `python --version` 顯示 `Python 3.x`。若出現 Microsoft Store 視窗或沒有輸出，視為未安裝；改試 `py --version`，記下可用的指令名稱（`python` 或 `py`），後面步驟以 `<PY>` 代表 |
+| Python | 必要，3.10 以上 | `python --version` 顯示 `Python 3.10` 或以上版本。若出現 Microsoft Store 視窗或沒有輸出，視為未安裝；改試 `py --version`，記下可用的指令名稱（`python` 或 `py`），後面步驟以 `<PY>` 代表 |
 | Git for Windows | 必要 | `git --version` 有版本號 |
 | Claude Code | 必要 | `claude --version` 有版本號。你本身若在 Claude Code 內執行，視為已安裝。本工具包的 CLAUDE.md、skills、hooks 由 Claude Code 讀取；Claude 桌面版的一般聊天不讀這些檔案，桌面版的 Code 功能是否同樣讀取，未在 Windows 實測 |
 | Codex CLI | 選用 | `codex --version` 有版本號；沒有就跳過步驟 7 |
@@ -53,6 +61,9 @@ Get-Process olk -ErrorAction SilentlyContinue
 向使用者回報檢查表，缺少的必要項目說明用途，請使用者同意後安裝（`winget` 指令未在 Windows 實測）：
 
 ```powershell
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
 winget install -e --id Python.Python.3.12
 winget install -e --id Git.Git
 ```
@@ -72,6 +83,8 @@ Codex 需要 Node.js：`winget install -e --id OpenJS.NodeJS.LTS`，再 `npm ins
 
 ```powershell
 $ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
 New-Item -ItemType Directory -Force "$ws\knowledge","$ws\projects","$ws\inbox","$ws\tools" | Out-Null
 ```
 
@@ -103,7 +116,9 @@ New-Item -ItemType Directory -Force "$ws\knowledge","$ws\projects","$ws\inbox","
 先確認 Claude 設定資料夾：預設是 `%USERPROFILE%\.claude\`。若系統設有環境變數 `CLAUDE_CONFIG_DIR`，以它為準（未在 Windows 實測）。後面稱 `$cl`。
 
 ```powershell
+$ws = "$env:USERPROFILE\AI工作區"
 $cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
 New-Item -ItemType Directory -Force $cl | Out-Null
 Test-Path "$cl\CLAUDE.md"
 ```
@@ -113,7 +128,7 @@ Test-Path "$cl\CLAUDE.md"
 2. 您的職務與主要處理的工作？（一句話；用於填寫範本的使用者背景）
 3. 您是否熟悉命令列？（不熟悉就在背景欄寫明）
 
-填寫範本 `templates\CLAUDE.md`：只替換這四種預留位置，其餘 `<…>`（例如 `<專案>`）是通用寫法，保持原樣：
+填寫範本 `$kit\templates\CLAUDE.md`：只替換這四種預留位置，其餘 `<…>`（例如 `<專案>`）是通用寫法，保持原樣：
 
 | 預留位置 | 填入 |
 |---|---|
@@ -128,6 +143,9 @@ Test-Path "$cl\CLAUDE.md"
 
 完成：
 ```powershell
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
 Select-String -Path "$cl\CLAUDE.md" -Pattern '<使用者稱呼>|<工作資料夾路徑>|<工作資料夾>|<使用者的職務'
 (Get-Content "$cl\CLAUDE.md").Count
 ```
@@ -139,7 +157,9 @@ Select-String -Path "$cl\CLAUDE.md" -Pattern '<使用者稱呼>|<工作資料夾
 說明：skill 是你需要時才載入的作業手冊，平時不佔用記憶。核心共 5 個：`handoff-docs`（寫給 AI 看的文件）、`project-docs`（專案文件結構）、`codex-dispatch`（把工作交給 Codex）、`maker-checker`（做與驗分開）、`evidence-discipline`（證據紀律）。
 
 ```powershell
-$kit = "<工具包資料夾>"
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
 foreach ($s in "handoff-docs","project-docs","codex-dispatch","maker-checker","evidence-discipline") {
   $dst = "$cl\skills\$s"
   if (Test-Path $dst) { "已存在：$s" } else { New-Item -ItemType Directory -Force "$cl\skills" | Out-Null; Copy-Item -Recurse "$kit\skills\$s" $dst; "已安裝：$s" }
@@ -148,10 +168,13 @@ foreach ($s in "handoff-docs","project-docs","codex-dispatch","maker-checker","e
 
 同名 skill 已存在時，不覆蓋：向使用者說明，選項 A：保留原有的（建議）；B：原有的另存 `<名稱>.bak-日期` 後以本工具包的取代。
 
-`contracts\skills\` 底下的 skill 屬於合約與法務功能（說明見 `contracts\README.md`）：向使用者說明用途，使用者需要時以同樣方式安裝。
+合約與文件庫另依步驟 7.6 安裝。
 
 完成：
 ```powershell
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
 Get-ChildItem "$cl\skills" -Directory | ForEach-Object { "$($_.Name): " + (Test-Path "$($_.FullName)\SKILL.md") }
 ```
 每個已安裝的 skill 都顯示 True。
@@ -164,16 +187,22 @@ Get-ChildItem "$cl\skills" -Directory | ForEach-Object { "$($_.Name): " + (Test-
 1. 先在工具包資料夾執行測試：
 
 ```powershell
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
 Set-Location $kit
-<PY> -m unittest hooks/test_block_dangerous.py
+<PY> -m unittest discover -s "$kit\hooks"
 ```
 完成：輸出結尾是 `OK`。失敗時把輸出原文貼給使用者，停止本步驟。
 
 2. 向使用者說明會修改 `settings.json`（備份在同資料夾的 `settings.json.bak-日期`），取得同意後執行安裝腳本。先用 `--dry-run` 看計畫：
 
 ```powershell
-<PY> hooks\install_hooks.py --claude-dir $cl --python <PY> --dry-run
-<PY> hooks\install_hooks.py --claude-dir $cl --python <PY>
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
+<PY> "$kit\hooks\install_hooks.py" --claude-dir $cl --python <PY> --dry-run
+<PY> "$kit\hooks\install_hooks.py" --claude-dir $cl --python <PY>
 ```
 
 腳本會複製兩支 hook 到 `$cl\hooks\`，並把設定合併進 `settings.json`：既有的權限與其他 hook 原樣保留，重複執行不會重複加入。`settings.json` 不是合法 JSON 時腳本停止、不改任何檔案（結束碼 2），此時把錯誤原文給使用者看，請使用者決定。設定範例見 `hooks\settings.example.json`。
@@ -181,6 +210,9 @@ Set-Location $kit
 3. 驗證檔案與設定：
 
 ```powershell
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
 Test-Path "$cl\hooks\session_start.py","$cl\hooks\block_dangerous.py"
 Get-Content "$cl\settings.json" -Raw | ConvertFrom-Json | Select-Object -ExpandProperty hooks | ConvertTo-Json -Depth 6
 ```
@@ -189,6 +221,9 @@ Get-Content "$cl\settings.json" -Raw | ConvertFrom-Json | Select-Object -ExpandP
 4. 直接執行 hook 驗證行為（不經 Claude Code）：
 
 ```powershell
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
 '{"tool_name":"PowerShell","tool_input":{"command":"Remove-Item -Recurse C:\\no-such-folder"}}' | <PY> "$cl\hooks\block_dangerous.py"
 '{"tool_name":"PowerShell","tool_input":{"command":"Get-ChildItem"}}' | <PY> "$cl\hooks\block_dangerous.py"
 ```
@@ -205,6 +240,9 @@ Get-Content "$cl\settings.json" -Raw | ConvertFrom-Json | Select-Object -ExpandP
 說明給使用者聽：「git 是版本紀錄工具。每次提交（commit）就像存一個還原點。AI 如果改壞了檔案，可以退回之前的版本；每次改了什麼、什麼時候改的，也都有紀錄。紀錄只存在這台電腦，不會上傳到網路。」
 
 ```powershell
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
 Set-Location $ws
 git init
 git config user.name
@@ -228,6 +266,10 @@ inbox/codex/**/scratch/
 提交：
 
 ```powershell
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
+Set-Location $ws
 git add -A
 git commit -m "初始化工作資料夾"
 ```
@@ -241,6 +283,9 @@ git commit -m "初始化工作資料夾"
 只有使用者同意使用 Codex 時才做。
 
 ```powershell
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
 codex login status
 ```
 
@@ -259,29 +304,85 @@ codex login status
 
 ## 步驟 7.5：Anthropic 官方法務外掛（使用者處理合約或法務時）
 
-Anthropic 官方外掛 `legal`（https://github.com/anthropics/knowledge-work-plugins/tree/main/legal ，Apache-2.0）提供合約審閱 `/review-contract`、保密協議分級 `/triage-nda`、法遵檢查等功能，審閱依組織自訂的審閱手冊進行。安裝方式以該 README 為準，2026-10-07 版本為：
+Anthropic 官方外掛 `legal`（https://github.com/anthropics/knowledge-work-plugins/tree/main/legal ，Apache-2.0）提供合約審閱 `/review-contract`、保密協議分級 `/triage-nda`、`compliance` skill（隱私規範、資料處理協議與資料主體請求）等功能，審閱依組織自訂的審閱手冊進行。安裝方式以[官方 README](https://raw.githubusercontent.com/anthropics/knowledge-work-plugins/main/legal/README.md) 為準（查閱日期 2026-10-07）：
 
-```
+```powershell
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
 claude plugin marketplace add anthropics/knowledge-work-plugins
 claude plugin install legal@knowledge-work-plugins
 ```
 
-該外掛的預設範例為美國法；用於其他法域前，須以本工具包 `contracts/playbook/playbook.md` 為底，由使用者或法務人員填入公司立場與適用法規，寫成該外掛讀取的審閱手冊。外掛與本工具包的 `contract-review` 並用時，一律套用 `skills/evidence-discipline` 的引用規則。完成：外掛指令出現在 Claude Code 的指令清單中。
+該外掛的預設範例為美國法；用於其他法域前，須以本工具包 `$kit\contracts\playbook\playbook.md` 為底，由使用者或法務人員填入公司立場與適用法規，寫入使用者專案的 `.claude/legal.local.md`，由該外掛讀取。外掛與本工具包的 `contract-review` 並用時，一律套用 `skills/evidence-discipline` 的引用規則。完成：外掛指令出現在 Claude Code 的指令清單中。
+
+## 步驟 7.6：合約與文件庫
+
+使用者處理合約或公司文件時，安裝 `doc-library` 及 `contracts/skills/` 下全部 skills。先說明會安裝四個 skills 與 Python 套件，取得同意；同名 skill 的保留、備份與替換照步驟 4，未決定前不覆寫。若保留既有 skill，須確認其流程與本次欄位、驗證規則相容，並先備份、取得修改同意後補齊絕對路徑；不相容且未獲替換同意者列為未完成。
+
+工具包中的 skill 使用 `<工具包資料夾>` 作路徑佔位。複製後將已安裝 skill（含 references）的佔位替換為 `$kit` 的絕對路徑，使指令從任何工作資料夾都能找到腳本、schema 與手冊：
+
+```powershell
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
+$skillSources = @("$kit\skills\doc-library") + @(Get-ChildItem "$kit\contracts\skills" -Directory | ForEach-Object { $_.FullName })
+foreach ($src in $skillSources) {
+  $name = Split-Path $src -Leaf
+  $dst = "$cl\skills\$name"
+  if (Test-Path $dst) { "已存在，依步驟 4 處理：$name"; continue }
+  New-Item -ItemType Directory -Force "$cl\skills" | Out-Null
+  Copy-Item -Recurse $src $dst
+  Get-ChildItem $dst -Filter *.md -Recurse | ForEach-Object {
+    $content = [IO.File]::ReadAllText($_.FullName)
+    [IO.File]::WriteAllText($_.FullName, $content.Replace('<工具包資料夾>', $kit), (New-Object System.Text.UTF8Encoding($false)))
+  }
+}
+```
+
+依 `$kit\tools\README-convert-docs.md` 與 `$kit\tools\README-outlook-watch.md` 安裝套件。基礎套件如下；pywin32 供 Word 與傳統版 Outlook 的 COM 介面使用，`.doc`、`.rtf` 另需本機 Microsoft Word：
+
+```powershell
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
+<PY> -m pip install "markitdown[docx,pdf,xlsx,xls,pptx]" pywin32
+<PY> -c "import markitdown, pdfplumber, pypdfium2, win32com.client; print('ok')"
+<PY> "$kit\tools\convert_docs.py" --help
+<PY> "$kit\contracts\build_register.py" --help
+```
+
+pandoc 與 docling 為選配，先按 doc-library 的 OCR 盤點流程確認既有工具，再由使用者決定；需要 docling 時安裝 `<PY> -m pip install docling` 並以 `<PY> -c "import docling; print('ok')"` 檢查。需要 pandoc 時按轉檔說明安裝並以 `pandoc --version` 檢查。選用 Outlook 監看時以 `<PY> "$kit\tools\outlook-watch.py" --check` 確認可連線，並以已知新信比對輸出確認沒有漏信；只有新版 Outlook 時記錄此項略過及原因。
+
+完成檢查：
+
+```powershell
+$ws = "$env:USERPROFILE\AI工作區"
+$cl = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
+$kit = [IO.Path]::GetFullPath("$ws\tools\claude-office-kit")
+foreach ($s in "doc-library","contract-intake","contract-compare","contract-review") {
+  "$s`: " + (Test-Path "$cl\skills\$s\SKILL.md")
+  Get-ChildItem "$cl\skills\$s" -Filter *.md -Recurse | Select-String -SimpleMatch '<工具包資料夾>'
+}
+Test-Path "$kit\tools\convert_docs.py", "$kit\tools\outlook-watch.py", "$kit\contracts\build_register.py", "$kit\contracts\schema\fields.json", "$kit\contracts\playbook\playbook.md"
+```
+
+完成：四個 skills 與五個來源路徑均顯示 True；佔位搜尋無輸出；套件匯入輸出 `ok`；兩個 `--help` 結束碼為 0。核對已安裝 `doc-library` 與 `contract-intake` 的腳本路徑指向 `$kit`，不是相對於使用者專案。以一份自製含條號的 Word 文件轉檔，核對輸出來源鍵、單一 `title` 與「未驗證」狀態；完成登錄、獨立驗證及使用者確認後，以 `build_register.py --source-root` 產生一筆主檔，原檔雜湊相符。選配工具與 Outlook 的實測或略過原因一併記錄。
 
 ## 步驟 8：最終驗證與回報
 
-1. 請使用者關閉並重新開啟 Claude Code，在工作資料夾開新對話。
-2. 在 `$ws\projects\` 建一個示範專案 `_範例`（`docs\HANDOFF.md` 寫「示範：下一步是確認安裝完成」），開新對話時，你應該在開場的 context 看到這份交接檔。看不到時，檢查 `settings.json` 的 SessionStart 設定與 Python 指令名稱。
+1. 在 `$ws\projects\_範例\docs\HANDOFF.md` 建立示範交接檔，寫「示範：下一步是確認安裝完成」。
+2. 請使用者重新開啟 Claude Code，工作目錄指定為 `$ws\projects\_範例`，在此資料夾開新對話。`session_start.py` 只從目前工作目錄往上找，不會從工作區往下找專案。開場 context 應看見示範交接檔；看不到時檢查工作目錄、SessionStart 設定與 Python 指令名稱。
 3. 實際測試攔截：請自己在新對話中執行 `Remove-Item -Recurse "$env:TEMP\no-such-folder"`，預期被攔截並收到改用資源回收筒的說明。沒有被攔截時，回到步驟 5 檢查。
 4. 示範專案用完後，檔案逐一移除（不用 `-Recurse`），再 `git add -A; git commit -m "移除安裝示範專案"`。
-5. 追加一行到 `$ws\ops-log.md`：`<日期> [安裝] 安裝 claude-office-kit：CLAUDE.md、5 個 skills、2 個 hooks、git`，並 commit。
+5. 追加一行到 `$ws\ops-log.md`：`<日期> [安裝] 安裝 claude-office-kit：CLAUDE.md、核心 skills、合約與文件庫、hooks、git；選用項目與略過原因另列`，並 commit。
 
 向使用者回報（白話，不超過 15 行）：
-- 裝了什麼：CLAUDE.md（位置）、5 個 skills、2 個保護 hooks、工作資料夾與 git。
+- 裝了什麼：CLAUDE.md（位置）、5 個核心 skills、4 個合約與文件庫 skills（已選用者）、2 個保護 hooks、工作資料夾與 git。
 - 備份在哪：列出所有 `.bak-日期` 檔案。
 - 未完成或略過的項目與原因。
 - 如何復原：還原 `settings.json.bak-日期`、刪掉 `$cl\hooks\` 內兩支檔案；工作資料夾的變更用 `git log` 與 `git restore` 還原。
 - 未在 Windows 實測的項目清單。
 - 之後怎麼用：直接說工作內容；要查文件內容時，我會附上檔案、頁碼與原文；大量工作我會建議交給 Codex。
 
-完成：步驟 1 至 6 的完成條件都成立，使用者已收到回報。
+完成：步驟 0 至 8（含 7.5、7.6）的每項完成條件均有檢查結果；步驟 7、7.5、7.6 與各選用工具依使用者選擇標示「已完成」或「已略過（原因）」；必要項目未完成時，不宣告整體安裝完成。示範交接檔已在指定專案的新對話載入，攔截行為符合步驟 8，安裝與略過紀錄已 commit，使用者已收到回報。

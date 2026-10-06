@@ -14,7 +14,7 @@
 - Windows 10 或 11。
 - 使用 Claude Code，或 Claude 桌面版中使用 Claude Code 的功能（桌面版是否讀取這些檔案未在 Windows 實測）。
 - Codex CLI 為選用；沒有 Codex 時，派工改用 Claude 的 subagent。
-- 需要 Python 3.8 以上與 Git for Windows；缺少時安裝程序會請使用者同意後安裝。
+- 需要 Python 3.10 以上與 Git for Windows；缺少時安裝程序會請使用者同意後安裝。
 - 不需要會用命令列：指令由 Claude 執行。
 
 ## 使用方式
@@ -41,12 +41,17 @@
 | `hooks/test_block_dangerous.py` | 攔截規則的單元測試 |
 | `hooks/install_hooks.py` | 複製 hooks 並合併進 `settings.json`（保留既有設定、先備份） |
 | `hooks/settings.example.json` | hooks 設定範例 |
+| `skills/doc-library/` | 文件收錄、查詢與健檢，引用原文並對照 OCR 影像 |
+| `tools/` | `convert_docs.py`、`outlook-watch.py` 與說明 `README-convert-docs.md`、`README-outlook-watch.md` |
 | `contracts/` | 合約與法務管理的內容，見 [contracts/README.md](contracts/README.md) |
 
 ## 測試
 
 ```powershell
-python -m unittest hooks/test_block_dangerous.py
+python -m unittest discover -s hooks
+python -m unittest discover -s contracts
+python -m unittest discover -s contracts/dashboard
+python -m unittest discover -s tools
 ```
 
 ## 授權

@@ -48,23 +48,18 @@ frontmatter 是 Markdown 檔最前面、以兩行 `---` 包起來的一段「欄
 - 可檢查：欄位固定，缺欄或過期可由腳本機械檢查，不靠印象。
 - 可篩選：業務欄位集中在同一個位置。
 
-欄位定義見 `tools/README-convert-docs.md`。工具管理的欄位（`source_*`、`converter`、`converted_at`、`pages`、`ocr*`、`title`、`warnings`、`needs_review`）不手動修改。業務欄位區（`doc_type`、`parties`、`effective_date`、`expiry_date`、`status`、`tags`）由 Claude 填寫，規則：
+轉檔通用鍵為 `converter`、`ocr`、`ocr_engine`、`ocr_pages`、`source_path`、`source_sha256`、`source_modified`、`converted_at`、`pages`、`title`；工具另記錄轉檔警告與複核旗標。業務欄位由各領域定義；合約見 `<工具包資料夾>/contracts/schema/fields.json`。轉檔行為與限制見 `<工具包資料夾>/tools/README-convert-docs.md`。
 
-- 只填原文明文寫出的內容。原文沒寫、看不出來就留空，不推算。
-- 每個值寫成單行（例 `parties: ["甲公司", "乙公司"]`），日期用 `YYYY-MM-DD`。
-- 每填一個欄位，同時在 `evidence:` 單行記錄出處與驗證狀態，例：`evidence: {"effective_date": "p.1 第一條｜已對照原檔", "expiry_date": "p.3 第七條｜待對照影像"}`。
-- 重新轉換時業務欄位原樣保留，但 `needs_review` 會被設為 `true`；Claude 須重新對照新版原文，確認後才改回 `false`。
+- 只填原文明文寫出的內容。原文沒寫、看不出來就依領域規則留空或標示未載明，不推算。
+- 引用一律存於 `citations`，格式與必填條件依領域定義；合約依上述 schema 與 contract-intake 流程處理。
+- `title` 轉檔時以檔名預填；contract-intake 核對原文並完成驗證後，覆寫同一鍵，整份 frontmatter 只保留一個 `title`。其餘轉檔來源資訊不手動修改。
+- 重轉時保留業務欄位，`verification_status` 重設為「未驗證」、`needs_review` 設為 `true`。新版原文驗證完成後才改回 `false`，否則合約主檔不收錄。
 
 ## 驗證狀態
 
-| 狀態 | 條件 |
-|---|---|
-| 未驗證 | 只讀過衍生 Markdown |
-| 已對照原檔 | 已開啟原檔，在該頁或該條看到相同文字（文字型 PDF、Word） |
-| 待對照影像 | 文字來自 OCR，尚未對照該頁影像 |
-| 已對照影像 | OCR 文字已與該頁影像逐字比對（以 PDF 檢視器開啟該頁，或將該頁轉成圖片查看） |
+驗證狀態依 `<工具包資料夾>/contracts/schema/fields.json` 的 `verification_status` 列舉，不另訂狀態或格式。OCR 文字尚未對照影像屬「未驗證」；只有依領域驗證流程確認原檔與欄位相符後，才可標「已驗證」，確認不符則標「驗證不符」。
 
-使用者要據以簽約、發函、報價的內容，需要「已對照原檔」或「已對照影像」。Claude 對照時若看不到原檔的該頁（例如無法開啟），狀態維持原樣並說明。
+使用者要據以簽約、發函、報價的內容，須為「已驗證」。無法開啟原檔或對照影像時，維持「未驗證」並說明缺少的依據。
 
 ## 第一次使用前：盤點 OCR 環境
 
@@ -77,13 +72,13 @@ frontmatter 是 Markdown 檔最前面、以兩行 `---` 包起來的一段「欄
 5. 向使用者報告盤點結果與建議的路，由使用者決定。選項：
    - 沿用既有輸出：`--ocr-backend existing-text --ocr-dir <資料夾> --ocr-engine-name "<工具名稱>"`。
    - 用既有工具補做 OCR（例如在 FineReader 或 Acrobat 內批次處理），輸出放到 OCR 輸出資料夾，再用上一項收錄。
-   - 以 docling 本機 OCR：`--ocr-backend docling --ocr-device cuda`。GPU 支援依官方文件，專案內未實測，細節與限制見 `tools/README-convert-docs.md`。
+   - 以 docling 本機 OCR：`--ocr-backend docling --ocr-device cuda`。GPU 支援依官方文件，專案內未實測，細節與限制見 `<工具包資料夾>/tools/README-convert-docs.md`。
 6. 不為了「能 OCR」就安裝新軟體；先確認既有路徑不可用。
 
 ## 操作一：收錄（ingest）
 
 1. 確認原檔資料夾與衍生資料夾路徑；第一次使用先做上一節盤點。
-2. 執行 `python tools/convert_docs.py <原檔資料夾> -o <衍生資料夾>`（參數見 `tools/README-convert-docs.md`）。增量：原檔沒變的會跳過。
+2. 執行 `python "<工具包資料夾>/tools/convert_docs.py" <原檔資料夾> -o <衍生資料夾>`（參數見 `<工具包資料夾>/tools/README-convert-docs.md`）。增量：原檔沒變的會跳過。
 3. 讀工具的結束摘要與 `log.md` 新增的行。逐一處理：
    - 失敗：向使用者回報檔名與原因，不略過不提。
    - 不支援的格式：列給使用者。
@@ -104,7 +99,7 @@ frontmatter 是 Markdown 檔最前面、以兩行 `---` 包起來的一段「欄
 
    - 結論一至兩句。
    - 每個事實附出處：`〈檔名〉p.N`（PDF）或 `〈檔名〉第 X 條`（Word），並附原文逐字引文（引用區塊）。
-   - 驗證狀態（見上表）。
+   - 驗證狀態（見「驗證狀態」）。
    - 找不到時寫「文件中未找到 X」，並說明查了哪些文件。
    - 摘要與解讀和原文引文分開寫，讓使用者看得出哪些是原文、哪些是 Claude 的歸納。
 5. 查詢範圍涉及多份文件時，列出納入的文件清單，使用者才知道有沒有漏。
@@ -112,7 +107,7 @@ frontmatter 是 Markdown 檔最前面、以兩行 `---` 包起來的一段「欄
 
 ## 操作三：健檢（lint）
 
-先跑機械檢查：`python tools/convert_docs.py <原檔資料夾> -o <衍生資料夾> --lint`。它檢查：
+先跑機械檢查：`python "<工具包資料夾>/tools/convert_docs.py" <原檔資料夾> -o <衍生資料夾> --lint`。它檢查：
 
 - 原檔已變但衍生檔未更新（`過期`）
 - 原檔不存在的衍生檔（`孤兒頁`）、原檔沒有衍生檔（`未轉換`）
@@ -125,7 +120,7 @@ frontmatter 是 Markdown 檔最前面、以兩行 `---` 包起來的一段「欄
 再做機械檢查做不到的檢查（Claude 讀文件判斷，結果向使用者報告為「疑似」，附雙方原文出處）：
 
 - 互相矛盾：同一對象、不同文件的日期、金額、期間、通知天數不一致。
-- 業務欄位與原文不符：抽查已填欄位，對照 `evidence` 記的出處。
+- 業務欄位與原文不符：抽查已填欄位，對照 `citations` 記的出處。
 - 主題頁孤兒或失效：沒有任何連結指向的主題頁；連結的衍生檔已不存在。
 - 主題頁的敘述與原文不符。
 
@@ -141,6 +136,6 @@ frontmatter 是 Markdown 檔最前面、以兩行 `---` 包起來的一段「欄
 
 ## 工具使用的限制
 
-- 轉換工具不能保證完整（頁首頁尾、註解、文字方塊、圖片內文字、Word 自動編號可能缺漏或不同），限制清單見 `tools/README-convert-docs.md`。
+- 轉換工具不能保證完整（頁首頁尾、註解、文字方塊、圖片內文字、Word 自動編號可能缺漏或不同），限制清單見 `<工具包資料夾>/tools/README-convert-docs.md`。
 - PDF 頁碼為檔案的第幾頁，不一定等於頁面上印的頁碼；引用時兩者不同要註明。
 - Word 的頁數隨版面變動，引用 Word 以條號與標題為準。

@@ -69,9 +69,9 @@ renewal_type: "自動續約"
 ...（其餘欄位見下表，沒有值的欄位寫 "" ）
 source_path: "原檔/原料供應合約.pdf"
 source_sha256: "（原檔的 SHA-256）"
-converted_by: "doc-library"
+converter: "doc-library"
 converted_at: "2026-10-07"
-ocr_used: false
+ocr: false
 verification_status: "已驗證"
 verified_at: "2026-10-07"
 verifier_note: ""
@@ -82,9 +82,9 @@ citations:
 （doc-library 轉出的內文，原樣保留）
 ```
 
-額外鍵：`source_path`、`source_sha256`、`converted_by`、`converted_at`、`ocr_used`、`verification_status`（未驗證、已驗證、驗證不符）、`verified_at`、`verifier_note`、`citations`。這些鍵不進 `register.csv`。
+轉檔與驗證鍵的定義見 `schema/fields.json` 的 `frontmatter`；除共用的 `title` 外，這些鍵不進 `register.csv`。轉檔以檔名預填 `title`，contract-intake 核對原文後覆寫同一鍵，不再新增第二個 `title`。
 
-`build_register.py` 寫入一份合約的條件：欄位型別與列舉值符合 `fields.json`；須附出處的欄位有值（且不是「未載明」）時至少有一筆 citation；每筆 citation 的 quote 逐字出現在內文（有 page 者須在該頁）；`verification_status` 為「已驗證」；給 `--source-root` 時 `source_sha256` 與原檔相符。任一項不符就不寫入該份並列出原因。
+`build_register.py` 寫入一份合約的條件：欄位型別與列舉值符合 `fields.json`；須附出處的欄位有值（且不是「未載明」）時至少有一筆 citations；每筆 citations 須有頁碼或條號，quote 逐字出現在內文（有 page 者該頁須有頁標記，且引句須在該頁）；`needs_review` 不為 true；`verification_status` 為「已驗證」；給 `--source-root` 時 `source_sha256` 與原檔相符。任一項不符就不寫入該份並列出原因。遞迴掃描排除 `_history/`。原檔重轉後驗證狀態重設為「未驗證」，待新版複核完成才解除 `needs_review`。
 
 ## 合約主檔欄位
 
@@ -107,16 +107,16 @@ citations:
 | `end_date` | 到期日 | date | 否 | 是 | 現行期間的屆滿日；無固定期限者留空並將 renewal_type 設為「無固定期限」。 | CUAD:Expiration Date |
 | `renewal_type` | 續約方式 | enum | 是 | 是 | 自動續約／書面續約／不續約／無固定期限／未載明。 | CUAD:Renewal Term |
 | `renewal_term_months` | 續約期間（月） | integer | 否 | 是 | 每次續約延長的月數；未載明留空。 | CUAD:Renewal Term |
-| `notice_days` | 通知期限（天） | integer | 否 | 是 | 不續約或終止須提前通知的天數；通知截止日 = 到期日 - 通知期限，由面板計算。 | CUAD:Notice Period To Terminate Renewal |
-| `termination_for_convenience` | 無因終止權 | enum | 否 | 是 | 有（雙方）／有（僅本方）／有（僅對方）／無／未載明。 | CUAD:Termination For Convenience |
+| `notice_days` | 通知期限（天） | integer | 否 | 是 | 不續約或終止須提前通知的天數；通知截止日 = 到期日 - 通知期限，由面板計算。 | CUAD:Notice to Terminate Renewal |
+| `termination_for_convenience` | 無因終止權 | enum | 否 | 是 | 有（雙方）／有（僅本方）／有（僅對方）／無／未載明。 | CUAD:Termination for Convenience |
 | `contract_value` | 合約金額 | number | 否 | 是 | 合約總額或年額（於 value_basis 註明）；無金額者留空。 | CLM 通行欄位（Contract Value） |
 | `currency` | 幣別 | string | 否 | 是 | ISO 4217 三碼，例 TWD、USD、CNY。 | ISO 4217 |
 | `value_basis` | 金額基礎 | string | 否 | 是 | 總額／年額／月額／單價／未載明。 | 本工具自訂 |
 | `payment_terms` | 付款條件 | string | 否 | 是 | 付款時點與期限摘要，例「月結 60 天」。 | CLM 通行欄位（Payment Terms） |
-| `liability_cap` | 責任上限 | string | 否 | 是 | 責任上限條款摘要（金額或倍數、例外）；無上限寫「無上限」，未載明寫「未載明」。 | CUAD:Cap On Liability / Uncapped Liability |
+| `liability_cap` | 責任上限 | string | 否 | 是 | 責任上限條款摘要（金額或倍數、例外）；無上限寫「無上限」，未載明寫「未載明」。 | CUAD:Cap on Liability / Uncapped Liability |
 | `governing_law` | 準據法 | string | 否 | 是 | 準據法所載法域，例「中華民國法」。 | CUAD:Governing Law |
 | `jurisdiction` | 管轄法院或仲裁 | string | 否 | 是 | 約定管轄法院或仲裁機構與地點。 | CLM 通行欄位（Dispute Resolution / Jurisdiction） |
-| `assignment_restriction` | 轉讓限制 | string | 否 | 是 | 轉讓、控制權變更限制摘要。 | CUAD:Anti-Assignment / Change Of Control |
+| `assignment_restriction` | 轉讓限制 | string | 否 | 是 | 轉讓、控制權變更限制摘要。 | CUAD:Anti-Assignment / Change of Control |
 | `involves_personal_data` | 涉及個資 | enum | 否 | 是 | 是／否／未載明。 | 本工具自訂 |
 | `confidentiality` | 保密條款 | enum | 否 | 是 | 有／無／未載明。 | CLM 通行欄位（Confidentiality） |
 | `prior_contract_id` | 上期合約編號 | string | 否 | 否（人工或系統填） | 續約時指向被取代的上期 contract_id。 | CLM 通行欄位（Renewal Chain） |
@@ -130,6 +130,8 @@ citations:
 | `file_path` | 原檔位置 | string | 否 | 否（人工或系統填） | 最終簽署版原檔所在位置或連結。 | CLM 通行欄位（Document Repository Link） |
 | `notes` | 備註 | string | 否 | 否（人工或系統填） | 其他須記錄的事項。 | CLM 通行欄位 |
 | `updated_at` | 最後更新日 | date | 是 | 否（人工或系統填） | 主檔此列最後修改日。 | CLM 通行欄位 |
+
+CUAD 類別名稱依論文附錄表 4、5 核對：[CUAD 論文](https://arxiv.org/abs/2103.06268)，查閱日期 2026-10-07。
 
 來源欄說明：「CUAD:」表示借用 The Atticus Project 的 Contract Understanding Atticus Dataset（CUAD v1）的條款類別名稱；「CLM 通行欄位」表示商用合約生命週期管理（CLM）產品的合約主檔普遍具備的欄位（例如合約編號、類型、對象、狀態、金額、續約與通知、原檔連結、上下期關係）；「本工具自訂」為本工具為面板、出處追溯或初審流程所加。欄位名稱為本工具自訂的英文識別字，未逐項對照特定產品或標準的欄位命名。
 

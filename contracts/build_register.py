@@ -12,9 +12,10 @@ register.csv 是衍生資料，可隨時由 Markdown 重新產生；不要手改
 寫入條件（每份合約逐項檢查，任一項不符即不寫入，並列在報告中，結束碼為 1）：
     1. frontmatter 欄位型別、列舉值、必填欄位符合 fields.json。
     2. 須附出處的欄位（from_text）若有值且不是「未載明」，至少有一筆 citations，
-       且每筆 quote 逐字出現在本檔內文（空白正規化後比對）；有 page 者須出現在該頁區段內。
+       且每筆引用須有頁碼或條號；quote 逐字出現在本檔內文；有 page 者須出現在該頁區段內。
     3. verification_status 為「已驗證」（--allow-unverified 時放寬，僅供草稿檢視）。
     4. 給 --source-root 時，source_sha256 須與原檔相符。
+    5. needs_review 不得為 true；掃描時排除所有 _history/ 目錄。
 
 frontmatter 格式（YAML 子集）：
     key: "字串"            字串以 JSON 雙引號書寫，可含 \\n、\\"
@@ -35,10 +36,6 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_FIELDS = HERE / "schema" / "fields.json"
-VERIFICATION = ("未驗證", "已驗證", "驗證不符")
-# 轉換與驗證用的額外 frontmatter 鍵（不進 register.csv）
-EXTRA_KEYS = ["source_path", "source_sha256", "converted_by", "converted_at",
-              "ocr_used", "verification_status", "verified_at", "verifier_note", "citations"]
 PAGE_RE = re.compile(r"<!--\s*page:\s*(\d+)\s*-->")
 UNSTATED = "未載明"
 
@@ -87,17 +84,13 @@ def dump_frontmatter(meta):
     """把 meta 寫成 frontmatter 文字（含前後 ---），list 值逐行寫成單行 JSON。"""
     out = ["---"]
     for key, value in meta.items():
-        if isinstance(value, list):
+        if isinstance(value, list) and value:
             out.append(f"{key}:")
             out.extend("  - " + json.dumps(item, ensure_ascii=False) for item in value)
         else:
             out.append(f"{key}: {json.dumps(value, ensure_ascii=False)}")
     out.append("---")
     return "\n".join(out) + "\n"
-
-
-def norm(text):
-    return re.sub(r"\s+", "", text or "")
 
 
 def page_sections(body):
@@ -145,15 +138,20 @@ def check_citations(meta, body, fields):
     if not isinstance(cites, list):
         return ["citations 須為清單"]
     sections = page_sections(body)
-    flat = norm(body)
+    flat = body
     for i, c in enumerate(cites, start=1):
-        if not isinstance(c, dict) or not c.get("field") or not c.get("quote"):
+        if (not isinstance(c, dict) or not c.get("field")
+                or not isinstance(c.get("quote"), str) or not c["quote"].strip()):
             errors.append(f"citations 第 {i} 筆缺 field 或 quote")
             continue
-        quote = norm(str(c["quote"]))
+        quote = str(c["quote"])
         page = c.get("page")
+        clause = c.get("clause")
+        if page in (None, "") and (not isinstance(clause, str) or not clause.strip()):
+            errors.append(f"citations 第 {i} 筆（{c['field']}）：須有頁碼或條號")
+            continue
         if page not in (None, ""):
-            text = norm(sections.get(int(page), "")) if str(page).isdigit() else ""
+            text = sections.get(int(page), "") if str(page).isdigit() else ""
             if not text:
                 errors.append(f"citations 第 {i} 筆（{c['field']}）：內文沒有第 {page} 頁的頁標記或該頁無文字")
             elif quote not in text:
@@ -179,10 +177,13 @@ def validate(meta, body, fields, enums, allow_unverified=False, source_root=None
         if e:
             errors.append(e)
     status = meta.get("verification_status")
-    if status not in VERIFICATION:
-        errors.append(f"verification_status 須為 {list(VERIFICATION)}")
+    verification = enums["verification_status"]
+    if status not in verification:
+        errors.append(f"verification_status 須為 {verification}")
     elif status != "已驗證" and not allow_unverified:
         errors.append(f"verification_status 為「{status}」，未通過驗證不寫入主檔")
+    if meta.get("needs_review") is True:
+        errors.append("needs_review 為 true，原檔更新後尚未複核，不寫入主檔")
     sha = str(meta.get("source_sha256", ""))
     if not re.fullmatch(r"[0-9a-f]{64}", sha):
         errors.append("source_sha256 須為 64 碼小寫十六進位")
@@ -203,6 +204,8 @@ def build(md_dir, fields_path=DEFAULT_FIELDS, allow_unverified=False, source_roo
     fields, enums = load_schema(fields_path)
     rows, problems, seen = [], [], {}
     for path in sorted(Path(md_dir).rglob("*.md")):
+        if "_history" in path.relative_to(md_dir).parts[:-1]:
+            continue
         try:
             meta, body = split_document(path.read_text(encoding="utf-8"))
         except (OSError, ValueError, UnicodeDecodeError) as exc:

@@ -1,6 +1,6 @@
 ---
 name: codex-dispatch
-description: 把工作交給 Codex（OpenAI 的命令列程式工具）執行，以節省 Claude 額度與保留本對話的 context。用在大量讀檔或搜尋、整個資料夾的整理、機械性的批次修改、產出長文件、依規格寫程式、需要另一個模型家族看一遍的情況，包含使用者沒提到 Codex、但工作量大或重複性高的時候。Windows PowerShell 寫法。
+description: 把工作交給 Codex（OpenAI 的命令列程式工具）執行，以節省 Claude 額度與保留本對話的 context。用在大量讀檔或搜尋、整個資料夾的整理、機械性的批次修改、產出長文件、依規格寫程式、需要另一個模型家族看一遍的情況，包含使用者沒提到 Codex、但工作量大或重複性高的時候。派出前須取得使用者對傳送文件內容的明確同意；合約與個資逐批確認範圍、接收服務與目的。Windows PowerShell 寫法。
 ---
 
 # 把工作交給 Codex

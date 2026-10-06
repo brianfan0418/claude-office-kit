@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""convert_docs.py - 把資料夾中的 Word、PDF、Excel、PowerPoint 轉成帶 metadata 的 Markdown。
+"""convert_docs.py - 把 Word、PDF、Excel、PowerPoint、Markdown 轉成帶 metadata 的 Markdown。
 
 用法：python convert_docs.py 原檔資料夾 [-o 輸出資料夾]   轉換（增量）
   python convert_docs.py 原檔資料夾 [-o 輸出資料夾] --lint  檢查衍生檔與原檔是否一致（不轉換）
@@ -10,7 +10,7 @@
     .doc/.rtf 以 Word COM（pywin32）另存成暫存 .docx 後再轉；掃描型 PDF 標記 ocr: required，
     以 --ocr-backend 選擇 docling 本機 OCR，或沿用既有 OCR 工具的輸出（existing-text）。
   - 增量：以來源檔 sha256 判斷；沒變就跳過；變了就重轉並把舊 Markdown 存進 _history/。
-  - 每份 Markdown 開頭是 YAML frontmatter；「業務欄位」區由各領域 skill 填寫，重轉時原樣保留。
+  - 每份 Markdown 開頭是 YAML frontmatter；領域欄位重轉時保留，驗證狀態與複核旗標重設。
 
 輸出
   <輸出資料夾>/<原檔相對路徑>.md   例：合約/甲.docx -> 合約/甲.docx.md
@@ -39,17 +39,15 @@ from pathlib import Path
 WORD_EXTS = {".doc", ".rtf"}
 # 直接交給 MarkItDown 的格式
 MARKITDOWN_EXTS = {".docx", ".xlsx", ".xls", ".pptx", ".pdf"}
-SUPPORTED_EXTS = WORD_EXTS | MARKITDOWN_EXTS
+SUPPORTED_EXTS = WORD_EXTS | MARKITDOWN_EXTS | {".md"}
 
 # 由本工具產生與更新的欄位（單行、JSON 風格的值）。順序即寫出順序。
 MANAGED_KEYS = [
     "source_path", "source_sha256", "source_modified", "converter",
     "converted_at", "pages", "ocr", "ocr_engine", "ocr_pages", "ocr_source", "ocr_source_sha256",
-    "title", "warnings", "needs_review",
+    "title", "warnings", "needs_review", "verification_status",
 ]
-# 業務欄位預設值，由各領域 skill 填寫；本工具只在首次轉換時寫入空白。
-BUSINESS_KEYS = ["doc_type", "parties", "effective_date", "expiry_date", "status", "tags"]
-BUSINESS_MARKER = "# --- 業務欄位：由各領域 skill 填寫，重新轉換時原樣保留 ---"
+BUSINESS_MARKER = "# --- 業務欄位：由各領域 skill 定義；重轉後須重新驗證 ---"
 
 # 單頁抽出的文字少於此字數，視為該頁沒有文字層
 MIN_TEXT_CHARS_PER_PAGE = 20
@@ -117,8 +115,8 @@ def build_frontmatter(managed: dict, business_tail: list[str] | None = None) -> 
         lines.append(f"{k}: {v}" if v != "" else f"{k}:")
     lines.append(BUSINESS_MARKER)
     if business_tail is None:
-        business_tail = [f"{k}:" for k in BUSINESS_KEYS]
-    lines.extend(business_tail)
+        business_tail = []
+    lines.extend(business_fields(business_tail))
     lines.append("---")
     return "\n".join(lines) + "\n"
 
@@ -137,8 +135,6 @@ def parse_managed(fm_lines: list[str]) -> dict:
     """只解析本工具寫出的單行欄位；其餘（業務欄位）不解析。"""
     out: dict = {}
     for line in fm_lines:
-        if line.startswith(BUSINESS_MARKER):
-            break
         m = re.match(r"^([A-Za-z0-9_]+):\s*(.*)$", line)
         if not m or m.group(1) not in MANAGED_KEYS:
             continue
@@ -153,11 +149,23 @@ def parse_managed(fm_lines: list[str]) -> dict:
     return out
 
 
+def business_fields(lines: list[str]) -> list[str]:
+    """保留領域欄位，移除工具管理鍵的整個區塊，避免重複 title 或驗證狀態。"""
+    out, keep = [], True
+    for line in lines:
+        m = re.match(r"^([A-Za-z0-9_]+):", line)
+        if m:
+            keep = m.group(1) not in MANAGED_KEYS
+        if keep:
+            out.append(line)
+    return out
+
+
 def business_tail(fm_lines: list[str]) -> list[str] | None:
     for i, line in enumerate(fm_lines):
-        if line.startswith(BUSINESS_MARKER):
-            return fm_lines[i + 1:]
-    return None
+        if line.startswith("# --- 業務欄位："):
+            return business_fields(fm_lines[i + 1:])
+    return business_fields(fm_lines) if fm_lines else None
 
 
 def read_md(path: Path):
@@ -461,14 +469,6 @@ def convert_office(path: Path, engine: str, word: WordSession | None, docx_via_w
             shutil.rmtree(tmpdir, ignore_errors=True)
 
 
-def guess_title(body: str, fallback: str) -> str:
-    for line in body.splitlines():
-        m = re.match(r"^#{1,6}\s+(.+?)\s*#*$", line)
-        if m:
-            return m.group(1).strip()
-    return fallback
-
-
 # ---------------------------------------------------------------- 主流程
 
 def scan_sources(src_dir: Path, out_dir: Path):
@@ -516,7 +516,10 @@ def convert_one(src: Path, rel: str, out_dir: Path, *, engine, ocr: OcrConfig, w
         if old_m.get("source_sha256") == sha_before and not force and not ocr_pending and not ocr_input_changed:
             return "unchanged"
     try:
-        if src.suffix.lower() == ".pdf":
+        if src.suffix.lower() == ".md":
+            source_fm, body = read_md(src)
+            res = Converted(body, "markdown-copy", None, OCR_NOT_NEEDED, [])
+        elif src.suffix.lower() == ".pdf":
             res = convert_pdf(src, rel, ocr)
         else:
             res = convert_office(src, engine, word, docx_via_word)
@@ -529,6 +532,8 @@ def convert_one(src: Path, rel: str, out_dir: Path, *, engine, ocr: OcrConfig, w
 
     action = "new"
     tail = business_tail(old_fm)
+    if old_text is None and src.suffix.lower() == ".md":
+        tail = business_tail(source_fm)
     needs_review = False
     if old_text is not None:
         action = "updated"
@@ -538,7 +543,7 @@ def convert_one(src: Path, rel: str, out_dir: Path, *, engine, ocr: OcrConfig, w
         hist_file.parent.mkdir(parents=True, exist_ok=True)
         hist_file.write_text(old_text, encoding="utf-8")
         # 原檔已變，沿用的業務欄位可能過時，標記待人工複核
-        needs_review = bool(tail and any(re.match(r"^[A-Za-z0-9_]+:\s*\S", ln) for ln in tail))
+        needs_review = True
 
     managed = {
         "source_path": rel,
@@ -552,9 +557,10 @@ def convert_one(src: Path, rel: str, out_dir: Path, *, engine, ocr: OcrConfig, w
         "ocr_pages": res.ocr_pages,
         "ocr_source": res.ocr_source,
         "ocr_source_sha256": res.ocr_source_sha256,
-        "title": guess_title(res.body, Path(rel).stem),
+        "title": Path(rel).stem,
         "warnings": res.warnings,
         "needs_review": needs_review,
+        "verification_status": "未驗證",
     }
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(build_frontmatter(managed, tail) + "\n" + res.body, encoding="utf-8")
@@ -668,7 +674,7 @@ def lint_tree(src_dir: Path, out_dir: Path) -> list[str]:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="把 Word/PDF/Excel/PowerPoint 轉成帶 metadata 的 Markdown（原檔唯讀）")
+    ap = argparse.ArgumentParser(description="把 Word/PDF/Excel/PowerPoint/Markdown 轉成帶 metadata 的 Markdown（原檔唯讀）")
     ap.add_argument("source", type=Path, help="原檔資料夾")
     ap.add_argument("-o", "--out", type=Path, help="輸出資料夾（預設：原檔資料夾旁的「<名稱>-md」）")
     ap.add_argument("--engine", choices=["markitdown", "pandoc"], default="markitdown",

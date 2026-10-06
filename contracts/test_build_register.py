@@ -50,6 +50,12 @@ class FrontmatterTest(unittest.TestCase):
     def test_no_frontmatter(self):
         self.assertEqual(br.split_document("# 標題\n")[0], None)
 
+    def test_empty_converter_lists_keep_their_type(self):
+        m = meta(ocr_pages=[], warnings=[])
+        parsed, _ = br.split_document(br.dump_frontmatter(m) + BODY)
+        self.assertEqual(parsed["ocr_pages"], [])
+        self.assertEqual(parsed["warnings"], [])
+
     def test_bad_line(self):
         with self.assertRaises(ValueError):
             br.split_document("---\n壞掉的行\n---\n內文")
@@ -116,6 +122,56 @@ class BuildTest(unittest.TestCase):
         rows, problems = self.run_build()
         self.assertEqual(len(rows), 1)
         self.assertIn("重複", problems[0][1][-1])
+
+    def test_history_is_excluded_at_any_depth(self):
+        write(self.dir, "current.md", meta())
+        for name in ("_history", "nested/_history"):
+            history = self.dir / name
+            history.mkdir(parents=True)
+            write(history, "old.md", meta())
+            (history / "broken.md").write_text("---\nbroken\n---", encoding="utf-8")
+        rows, problems = self.run_build()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(problems, [])
+
+    def test_needs_review_blocks_even_verified_and_draft(self):
+        write(self.dir, "a.md", meta(needs_review=True))
+        for allow in (False, True):
+            rows, problems = self.run_build(allow_unverified=allow)
+            self.assertEqual(rows, [])
+            self.assertTrue(any("needs_review 為 true" in e for e in problems[0][1]))
+        write(self.dir, "a.md", meta(needs_review=False))
+        self.assertEqual(len(self.run_build()[0]), 1)
+
+    def test_docx_clause_only_citations_pass(self):
+        m = meta(source_path="a.docx")
+        for c in m["citations"]:
+            c["page"] = None
+        body = br.PAGE_RE.sub("", BODY)
+        write(self.dir, "a.docx.md", m, body)
+        rows, problems = self.run_build()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(problems, [])
+
+    def test_citation_without_page_or_clause_is_rejected(self):
+        m = meta(source_path="a.docx")
+        m["citations"][0].update(page=None, clause=" ")
+        write(self.dir, "a.md", m)
+        rows, problems = self.run_build()
+        self.assertEqual(rows, [])
+        self.assertTrue(any("須有頁碼或條號" in e for e in problems[0][1]))
+
+    def test_page_requires_marker_even_with_clause(self):
+        write(self.dir, "a.md", meta(), br.PAGE_RE.sub("", BODY))
+        rows, problems = self.run_build()
+        self.assertEqual(rows, [])
+        self.assertTrue(any("頁標記" in e for e in problems[0][1]))
+
+    def test_quote_is_verbatim_including_whitespace(self):
+        m = meta()
+        m["citations"][2]["quote"] = "有效期間至2026年11月30日止"
+        write(self.dir, "a.md", m)
+        self.assertEqual(self.run_build()[0], [])
 
     def test_source_hash_check(self):
         src = self.dir / "src"
