@@ -62,7 +62,9 @@ python "<工具包>/hooks/install_hooks.py" --platform codex --dry-run
 
 含空白的 Python 完整路徑可用 `--python "C:/Program Files/Python/python.exe"`，短啟動器可用 `--python "py -3"`。安裝器逐一引用執行檔與腳本路徑；Claude 在 Windows 依官方規則選 Git Bash 或 PowerShell，後者使用 `&` 呼叫運算子並保存 Python 結束碼。Codex 的 Windows 指令明確啟動 PowerShell，使用 UTF-16LE 的 EncodedCommand 傳入已引用路徑的指令，避免外層 shell 再拆路徑。依據：[Claude command hook 的 shell](https://code.claude.com/docs/en/hooks#command-hook-fields)、[Microsoft 呼叫運算子](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_operators?view=powershell-7.5)、[EncodedCommand 與結束碼](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_powershell_exe?view=powershell-5.1)。這些 Windows 指令已做替身驗證，仍需在目標 Windows 核對。
 
-安裝器備份並合併開場、防護及寫法 gate，複製共用 `hook_state.py`。只選寫法 gate 時，仍請保留 hook_state.py 及 block_dangerous.py，因 gate 重用其 heredoc／引號處理；可以不登記防護 handler。Codex 開場 handler 設 `additionalContextLimit: 0`，由本程式的字元上限控制輸出；官方預設約 2500 token 會將過長內容另存檔並只給預覽。Codex 須在 `/hooks` 審閱及信任新增或修改過的 hook，程式不代為信任，專案設定層亦須受信任。[Codex 官方設定及信任](https://learn.chatgpt.com/docs/hooks#review-and-trust-hooks)
+安裝器備份並合併開場、防護及寫法 gate，複製共用 `hook_state.py`。同一事件內，以指向的腳本完整路徑辨識本工具包 handler；重跑會取代並合併既有重複項，包含 Git Bash／PowerShell 切換、更換 Python 與本安裝器產生的 EncodedCommand，不受外層指令形式影響。其他路徑的 handler 與其 matcher 保留；建議切換 shell 後先 dry-run 核對再重跑。行為由 `test_install_commands.py` 的雙向切換與既有重複項測試核對，Windows 實機仍待驗證。
+
+只選寫法 gate 時，仍請保留 hook_state.py 及 block_dangerous.py，因 gate 重用其 heredoc／引號處理；可以不登記防護 handler。Codex 開場 handler 設 `additionalContextLimit: 0`，由本程式的字元上限控制輸出；官方預設約 2500 token 會將過長內容另存檔並只給預覽。Codex 須在 `/hooks` 審閱及信任新增或修改過的 hook，程式不代為信任，專案設定層亦須受信任。[Codex 官方設定及信任](https://learn.chatgpt.com/docs/hooks#review-and-trust-hooks)
 
 沒有可用 hook 的介面，可依 [CLAUDE 範本](../templates/CLAUDE.md) 或 [AGENTS 範本](../templates/AGENTS.md) 手動執行同一工具；這是指示要求，不能宣稱已自動注入。Cowork 附外掛 hooks，Python、工具名稱與工作目錄仍需在目標環境核對。
 

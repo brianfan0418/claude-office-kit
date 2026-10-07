@@ -16,12 +16,13 @@ import argparse
 import base64
 import datetime
 import json
+import ntpath
 import os
 import re
 import shlex
 import shutil
 import sys
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 HERE = Path(__file__).resolve().parent
 SCRIPTS = ("session_start.py", "block_dangerous.py", "skill_gate.py", "hook_state.py",
@@ -72,34 +73,93 @@ def command_for(python, claude_dir, script, platform="claude", shell="bash"):
     return command
 
 
-def add_hook(settings, event, matcher, command, shell=None, legacy_commands=()):
-    """加入一筆 hook；回傳是否有新增。"""
+def script_identity(path):
+    """腳本路徑是識別鍵；Windows 路徑統一分隔符、大小寫與 .／..。"""
+    value = str(path)
+    if os.name == "nt" or PureWindowsPath(value).drive:
+        return ntpath.normcase(ntpath.normpath(value))
+    return str(Path(value).expanduser().resolve())
+
+
+def hook_script(hook):
+    """解析 Python 呼叫與本安裝器的 EncodedCommand；不執行指令。"""
+    if hook.get("type") != "command" or not isinstance(hook.get("command"), str):
+        return None
+    try:
+        if "args" in hook:
+            if not isinstance(hook["args"], list) or not all(isinstance(arg, str) for arg in hook["args"]):
+                return None
+            argv = [hook["command"], *hook["args"]]
+            powershell = False
+        else:
+            argv = shlex.split(hook["command"])
+            powershell = hook.get("shell") == "powershell"
+        if not argv:
+            return None
+        if PureWindowsPath(argv[0]).name.lower() in ("powershell.exe", "pwsh.exe", "powershell", "pwsh"):
+            flags = [arg.lower() for arg in argv]
+            if "-encodedcommand" not in flags:
+                return None
+            index = flags.index("-encodedcommand") + 1
+            decoded = base64.b64decode(argv[index], validate=True).decode("utf-16-le")
+            argv = shlex.split(decoded)
+            powershell = True
+        if argv and argv[0] == "&":
+            argv = argv[1:]
+            powershell = True
+        for index, arg in enumerate(argv[1:], 1):
+            path = arg.rstrip(";")
+            if powershell:
+                path = re.sub(r"`(.)", r"\1", path)
+            if not path.lower().endswith(".py"):
+                continue
+            prefix = argv[:index]
+            if "-c" in prefix or "-m" in prefix:
+                return None
+            # 舊版未引用的 Python 完整路徑可能被切成數個 token。
+            end = next((i for i, token in enumerate(prefix) if token.startswith("-")), len(prefix))
+            executable = PureWindowsPath(" ".join(prefix[:end])).name
+            if re.fullmatch(r"(?:pythonw?(?:\d+(?:\.\d+)*)?|pyw?|pypy\d*)(?:\.exe)?", executable, re.I):
+                return script_identity(path)
+            return None
+    except (ValueError, UnicodeError, IndexError):
+        pass
+    return None
+
+
+def add_hook(settings, event, matcher, command, shell=None, script_path=None):
+    """依事件與腳本取代同一 handler，合併既有重複項，保留其他 handlers。"""
     groups = settings.setdefault("hooks", {}).setdefault(event, [])
+    identity = script_identity(script_path) if script_path is not None else hook_script({"type": "command", "command": command})
+    merged, installed = [], False
     for group in groups:
+        survivors = []
         for hook in group.get("hooks", []):
-            if hook.get("command") in legacy_commands and hook.get("command") != command:
-                hook["command"] = command
-                group["matcher"] = matcher
-                if shell:
-                    hook["shell"] = shell
-                return True
-            if hook.get("command") == command:
-                # 升級 matcher 亦須生效，包含 compact 與新增工具。
-                if group.get("matcher") != matcher or (shell and hook.get("shell") != shell):
-                    group["matcher"] = matcher
-                    if shell:
-                        hook["shell"] = shell
-                    return True
-                return False
-            # 本安裝器舊版的同一指令升級為附 tools-dir 的版本，避免兩次開場輸出。
-            if event == "SessionStart" and command.startswith(hook.get("command", "") + " --tools-dir "):
-                hook["command"] = command
-                group["matcher"] = matcher
-                return True
-    handler = {"type": "command", "command": command}
-    if shell:
-        handler["shell"] = shell
-    groups.append({"matcher": matcher, "hooks": [handler]})
+            owned = hook.get("type") == "command" and (hook.get("command") == command or
+                                                       (identity is not None and hook_script(hook) == identity))
+            if not owned:
+                survivors.append(hook)
+                continue
+            if not installed:
+                handler = dict(hook, type="command", command=command)
+                handler.pop("args", None)
+                if shell is None:
+                    handler.pop("shell", None)
+                else:
+                    handler["shell"] = shell
+                merged.append(dict(group, matcher=matcher, hooks=[handler]))
+                installed = True
+        # 混合群組只移出本工具包的 handler，保留使用者原 matcher 與屬性。
+        if survivors or not group.get("hooks"):
+            merged.append(dict(group, hooks=survivors) if group.get("hooks") else group)
+    if not installed:
+        handler = {"type": "command", "command": command}
+        if shell is not None:
+            handler["shell"] = shell
+        merged.append({"matcher": matcher, "hooks": [handler]})
+    if merged == groups:
+        return False
+    settings["hooks"][event] = merged
     return True
 
 
@@ -147,14 +207,9 @@ def main(argv=None):
         text = command_for(args.python, claude_dir, script, args.platform, shell)
         return text + "; exit $LASTEXITCODE" if shell == "powershell" else text
     def install_hook(event, matcher, script):
-        legacy = f'{args.python} "{(claude_dir / "hooks" / script).as_posix()}"'
-        legacy_commands = [legacy]
-        if script == "session_start.py":
-            legacy_commands.append(legacy + f' --tools-dir "{(HERE.parent / "tools").as_posix()}"')
-        elif script == "block_dangerous.py" and args.platform == "codex":
-            legacy_commands.append(legacy + " --platform codex")
         return add_hook(settings, event, matcher, hook_command(script),
-                        shell if args.platform == "claude" and os.name == "nt" else None, legacy_commands)
+                        shell if args.platform == "claude" and os.name == "nt" else None,
+                        claude_dir / "hooks" / script)
     changed = []
     changed.append(install_hook("SessionStart", SESSION_MATCHER, "session_start.py"))
     changed.append(install_hook("PreToolUse", PRETOOL_MATCHER, "block_dangerous.py"))

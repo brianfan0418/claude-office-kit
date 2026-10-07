@@ -44,7 +44,7 @@ def expected_files():
     files["tools/REGISTRY.md"] = tool_index.encode("utf-8")
     for path in sorted((ROOT / "knowledge").glob("*.md")):
         files["knowledge/" + path.name] = path.read_bytes()
-    manifest = {"name": "office-work-kit", "version": "0.3.2",
+    manifest = {"name": "office-work-kit", "version": "0.3.3",
                 "description": "文件證據、交接、派工記錄、模型知識與選用工作管理工具。",
                 "repository": "https://github.com/brianfan0418/claude-office-kit",
                 "license": "MIT", "author": {"name": "Office kit contributors"}}

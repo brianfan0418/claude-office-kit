@@ -1,12 +1,12 @@
 # 交接
 
-最後更新：2026-10-07（K1d）
+最後更新：2026-10-07（K1e）
 
 ## 現況
 
-K1、K1b、K1c 的工作管理資源已補齊；K1d 已評估並修正驗收 F1–F7。本 repo 供使用者與 Codex／Claude 逐項選用；交付環境預設不用 Git，不替對方安裝、信任 hooks 或設定排程。本開發 repo 依交辦提交推送。
+K1、K1b、K1c 的工作管理資源已補齊；K1d 已修正驗收 F1–F7；K1e 已確認並修正 V2 的 N1（Windows 切換 shell 後重複安裝 hook）。本 repo 供使用者與 Codex／Claude 逐項選用；交付環境預設不用 Git，不替對方安裝、信任 hooks 或設定排程。本開發 repo 依交辦提交推送。
 
-- 原始資源在 skills、hooks、tools、knowledge、templates；plugin 是 build_plugin.py 產生的 0.3.2 副本，共 56 個檔案，維護原始檔後重建。
+- 原始資源在 skills、hooks、tools、knowledge、templates；plugin 是 build_plugin.py 產生的 0.3.3 副本，共 56 個檔案，維護原始檔後重建。
 - K1 提供模型／額度、CLI 更新、官方文件下載、派工記錄／狀態、文件落差與登記表；K1b 提供 AI 維護的必讀清單、寫法 gate 與中文任務資料夾。
 - K1c 背景派工／等待用 description「任務名（模型・強度）」；新增官方用量的 70% 收尾提醒，以及官方 prompt-audit 的採用建議。
 - 新增工具與 hooks 僅用 Python 標準函式庫；既有轉檔及 Outlook 的選用依賴仍依各自說明。私人文件、帳號、下載原檔與測試環境不納入公開 repo。
@@ -42,9 +42,13 @@ F1–F7 均成立；每項先以新測試重現原問題，再修正，同步原
 | F6 Codex 專案入口缺漏 | project-docs 附共用 AGENTS.md，CLAUDE.md 用 @AGENTS.md 匯入；新專案流程複製兩份，原生範圍附官方來源；範本模擬測試與 Linux Codex 原生診斷確認 |
 | F7 官方來源失效 | 改為有效的 Advanced Configuration 與 Non-interactive mode 頁，來源仍支援 CODEX_HOME／exec 敘述；離線契約測試及實際 GET 200 核對，外掛同步 |
 
+## K1e 複驗修正
+
+N1 成立：新增雙向測試在修改前均重現同位置切換 shell 後多出 5 個 handler。安裝器改以事件與腳本完整路徑辨識，解析 Bash／PowerShell／EncodedCommand；取代並合併重複項，保留其他路徑的 handler、原 matcher 及設定。安裝說明見開場說明；測試涵蓋雙向反覆切換、既有重複項、混合群組、dry-run、重跑不變及文字提及腳本不誤判。Windows 使用替身，未實機驗證。
+
 ## 已完成驗證
 
-- Linux：hooks 57 tests、tools 105 tests，共 162 通過，無略過；一次性測試環境含既有轉檔的 markitdown[docx,pdf]、python-docx、reportlab，含真實 DOCX／PDF 轉換。
+- Linux：hooks 61 tests、tools 105 tests，共 166 通過，無略過；一次性測試環境含既有轉檔的 markitdown[docx,pdf]、python-docx、reportlab，含真實 DOCX／PDF 轉換。
 - 標籤測試：8 個應擋例、4 個正確派工／等待例，另含狀態、help、list、heredoc、引號範例及 Codex 沒有背景欄位的情況。
 - 收尾測試：70% 邊界、缺一／兩份 skill、兩份已讀、同 session 一次、不同 session、缺值／null／NaN、壓縮失效、JSON 輸出、原狀態列轉交、備份／dry-run／重複安裝及更換 Python。
 - Codex 的官方 debug prompt-input 已在隔離的無 Git 專案確認舊 CLAUDE 範本未載入、新 AGENTS 範本已載入；它只診斷模型可見輸入，不派推理任務。官方依據見 [developer commands](https://learn.chatgpt.com/docs/developer-commands#codex-debug-prompt-input)。
