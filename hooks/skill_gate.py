@@ -13,6 +13,29 @@ SKILLS = ("handoff-docs", "project-docs")
 RULE = re.compile(r"(?:^|/)(?:CLAUDE|AGENTS)\.md$|(?:^|/)skills/[^/]+/|(?:^|/)(?:\.claude|\.codex)/rules/", re.I)
 PROJECT = re.compile(r"(?:^|/)docs/(?:HANDOFF|ROADMAP|CHANGELOG)\.md$|(?:^|/)docs/(?:decisions|specs)/|(?:^|/)docs/session-start\.json$", re.I)
 DISPATCH = re.compile(r"\bcodex-run\.py\s+submit\b|\bcodex-queue\.py\b|\bdispatch\.py\b", re.I)
+BG_WAIT = re.compile(r"\bcodex-run\.py\s+(?:submit|wait)\b|\bcodex-queue\.py\b|\bdispatch\.py\b", re.I)
+LABEL = re.compile(r"([^（）\r\n]+)（([A-Za-z0-9][A-Za-z0-9._/-]*)・([A-Za-z0-9][A-Za-z0-9._-]*)）")
+
+
+def background_label_error(data):
+    """只核對有背景參數的 shell 派工／等待，不把文件中的範例當成命令。"""
+    inp = data.get("tool_input") or {}
+    if data.get("tool_name") not in ("Bash", "PowerShell") or inp.get("run_in_background") is not True:
+        return None
+    command = inp.get("command") or ""
+    parts = re.split(r"&&|\|\||[;\n]", command_view(command))
+    if not any(BG_WAIT.search(part) and not re.search(r"\s--(?:help|status|list|install)\b", part)
+               for part in parts):
+        return None
+    label = inp.get("description")
+    match = LABEL.fullmatch(label.strip()) if isinstance(label, str) else None
+    if match:
+        task = match[1].strip()
+        if task and not re.search(r"[/\\]|^[A-Za-z]:|\b(?:python\d*|py|dispatch\.py|codex-run\.py)\b", task, re.I):
+            return None
+    return ("背景派工與背景等待的 description 請寫「任務名（模型・強度）」，"
+            "例如「合約欄位整理（gpt-6.1-sol・high）」；請核對任務設定中的模型與強度，"
+            "畫面描述不放程式名稱、路徑或參數。補好 description 後可重試。")
 
 
 def required(data):
@@ -99,6 +122,9 @@ def evaluate(data):
         for skill in observed_skill(data):
             mark_skill(session, skill)
         return None
+    label_error = background_label_error(data)
+    if label_error:
+        return label_error
     missing = required(data) - loaded_skills(session)
     if missing:
         return ("本對話尚未載入寫法 skill：" + "、".join(sorted(missing)) +

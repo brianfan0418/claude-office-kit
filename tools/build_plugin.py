@@ -27,7 +27,9 @@ def expected_files():
             content = path.read_text(encoding="utf-8")
             files[rel] = content.replace("<工具包資料夾>", "${CLAUDE_PLUGIN_ROOT}").encode()
     for name in ("session_start.py", "block_dangerous.py", "skill_gate.py", "hook_state.py",
-                 "README-session-start.md", "install_hooks.py", "settings.example.json", "codex-hooks.example.json"):
+                 "context_status.py", "wrapup_nudge.py",
+                 "README-session-start.md", "install_hooks.py", "settings.example.json",
+                 "statusline.example.json", "codex-hooks.example.json"):
         files[f"hooks/{name}"] = (ROOT / "hooks" / name).read_bytes()
     for path in sorted((ROOT / "templates").rglob("*")):
         if path.is_file():
@@ -42,7 +44,7 @@ def expected_files():
     files["tools/REGISTRY.md"] = tool_index.encode("utf-8")
     for path in sorted((ROOT / "knowledge").glob("*.md")):
         files["knowledge/" + path.name] = path.read_bytes()
-    manifest = {"name": "office-work-kit", "version": "0.3.0",
+    manifest = {"name": "office-work-kit", "version": "0.3.1",
                 "description": "文件證據、交接、派工記錄、模型知識與選用工作管理工具。",
                 "repository": "https://github.com/brianfan0418/claude-office-kit",
                 "license": "MIT", "author": {"name": "Office kit contributors"}}
@@ -53,7 +55,9 @@ def expected_files():
             {"type": "command", "command": 'python "${CLAUDE_PLUGIN_ROOT}/hooks/block_dangerous.py"'},
             {"type": "command", "command": 'python "${CLAUDE_PLUGIN_ROOT}/hooks/skill_gate.py"'}]}],
         "PostToolUse": [{"matcher": "Skill|Read|Bash|PowerShell", "hooks": [
-            {"type": "command", "command": 'python "${CLAUDE_PLUGIN_ROOT}/hooks/skill_gate.py"'}]}]}}
+            {"type": "command", "command": 'python "${CLAUDE_PLUGIN_ROOT}/hooks/skill_gate.py"'}]}],
+        "UserPromptSubmit": [{"hooks": [
+            {"type": "command", "command": 'python "${CLAUDE_PLUGIN_ROOT}/hooks/wrapup_nudge.py"'}]}]}}
     for rel, value in ((".claude-plugin/plugin.json", manifest), ("hooks/hooks.json", hooks)):
         files[rel] = (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode()
     files["README.md"] = (
@@ -65,10 +69,12 @@ def expected_files():
         "新增工作管理資源見 [工具說明](tools/README-ai-management.md)：模型與額度查詢、"
         "CLI 更新及收件匣通知、官方文件下載、背景派工及狀態、文件落差與登記表。"
         "模型知識見 [knowledge/codex-models.md](knowledge/codex-models.md)。"
-        "必讀清單、工具摘要、寫法 skill gate 與兩端原生機制見 "
+        "必讀清單、工具摘要、寫法 skill gate、背景標籤與 context 收尾提醒見 "
         "[開場說明](hooks/README-session-start.md)；[templates/](templates/) 附 JSON 清單、"
-        "CLAUDE／AGENTS 範本及中文任務資料夾。派工可用 `python dispatch.py 合約欄位整理`，"
-        "交辦及設定由任務檔讀取。Codex 與 Claude 均可協助選用，"
+        "CLAUDE／AGENTS 範本及中文任務資料夾。Claude 背景畫面以 description 顯示"
+        "「任務名（模型・強度）」，交辦及設定由任務檔讀取；Codex 對應畫面未確認。"
+        "收尾提醒需另採用官方 statusLine 用量來源，外掛不代為設定。"
+        "規則檔審查建議見採用指南的 prompt-audit 節。Codex 與 Claude 均可協助選用，"
         "工具不設定排程；執行資料請存授權工作區，維持外掛安裝目錄唯讀。\n\n"
         "外掛結構已依官方格式封裝；本套 Python hooks 在 Cowork、Windows COM、"
         "主機 Codex 登入與 OCR／GPU 的整合未驗證。轉檔與工具依賴不會自動安裝。\n"

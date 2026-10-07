@@ -88,3 +88,5 @@
 - 開場、恢復與壓縮後請核對必讀載入結果；超量項目先讀原檔，缺檔先回報影響，補齊前不依該文件決定。沒有可用 hook 時先執行工具包的 `hooks/session_start.py --cwd <專案> --text --check`。
 - 寫規則、skill 或派工前請先完整載入工具包 `handoff-docs`；專案交接、決策及規格再載入 `project-docs`。gate 以成功載入事件記錄；壓縮後重新載入。
 - 派工交辦與設定請存於 `tasks/<中文任務名稱>/`，背景命令使用 `python dispatch.py 任務名稱`；查進度加 `--status`，結果與摘要另行驗收。清單、兩端機制與採用方式見工具包 `hooks/README-session-start.md`。
+- 背景派工與背景等待的 Bash／PowerShell `description` 請寫「任務名（模型・強度）」，例如「合約欄位整理（gpt-6.1-sol・high）」；畫面給人看的內容是這個描述。模型與強度先核對 task.json；模型為 null 時先確認 CLI 實際選擇，不能猜。描述不放程式名稱、路徑或參數。
+- 收到 context 達 70% 的收尾提醒時，建議先載入尚缺的 handoff-docs、project-docs，將 HANDOFF 更新到可接手狀態；提醒不等於工作已完成。自動提醒需已採用官方 statusLine 用量來源，介面支援及設定方式見開場說明。

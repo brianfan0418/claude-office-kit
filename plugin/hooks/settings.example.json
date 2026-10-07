@@ -36,6 +36,16 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/Users/YourName/.claude/hooks/wrapup_nudge.py\""
+          }
+        ]
+      }
     ]
   }
 }

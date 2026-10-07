@@ -97,6 +97,51 @@ class GateTests(unittest.TestCase):
         data = self.event("Bash", {"command": "python dispatch.py --help && python dispatch.py 任務"})
         self.assertEqual(gate.required(data), {"handoff-docs"})
 
+    def test_background_dispatch_and_wait_reject_bad_labels(self):
+        self.load("handoff-docs")
+        cases = [
+            ("Bash", "python dispatch.py 合約欄位整理", None),
+            ("Bash", "python dispatch.py 合約欄位整理 --wait", "合約欄位整理"),
+            ("PowerShell", 'python "C:/AI/dispatch.py" 合約欄位整理', "合約欄位整理(gpt-6.1-sol/high)"),
+            ("Bash", "python codex-run.py wait --out inbox/test", "合約欄位整理（・high）"),
+            ("Bash", "python codex-queue.py --brief brief.md", " （gpt-6.1-sol・high）"),
+            ("Bash", "python dispatch.py 任務", "python dispatch.py 任務（gpt-6.1-sol・high）"),
+            ("Bash", "python dispatch.py 任務", "C:/work/任務（gpt-6.1-sol・high）"),
+            ("Bash", "python dispatch.py 任務", "任務（gpt-6.1-sol・high）\n其他文字"),
+        ]
+        for tool, command, label in cases:
+            with self.subTest(tool=tool, label=label):
+                data = self.event(tool, {"command": command, "run_in_background": True, "description": label})
+                self.assertIn("任務名（模型・強度）", gate.evaluate(data))
+
+    def test_background_dispatch_and_wait_allow_correct_labels(self):
+        self.load("handoff-docs")
+        cases = [
+            ("Bash", "python dispatch.py 合約欄位整理", "合約欄位整理（gpt-6.1-sol・high）"),
+            ("Bash", "python dispatch.py 合約欄位整理 --wait", "合約欄位整理（gpt-6.1-sol・high）"),
+            ("PowerShell", 'python "C:/AI/dispatch.py" 文件比對 --wait', "文件比對（gpt-6-astra・medium）"),
+            ("Bash", "python codex-run.py wait --out inbox/test", "文件核對（gpt-6.1-sol・xhigh）"),
+        ]
+        for tool, command, label in cases:
+            with self.subTest(tool=tool, label=label):
+                self.assertIsNone(gate.evaluate(self.event(tool, {
+                    "command": command, "run_in_background": True, "description": label})))
+
+    def test_label_guard_ignores_examples_queries_and_codex_without_field(self):
+        self.load("handoff-docs")
+        for command in ["python dispatch.py 任務 --status", "python dispatch.py --list",
+                        "python dispatch.py --help", "echo 'python dispatch.py 任務'",
+                        "cat <<'END'\npython dispatch.py 任務 --wait\nEND", "python ordinary.py"]:
+            with self.subTest(command=command):
+                self.assertIsNone(gate.evaluate(self.event("Bash", {
+                    "command": command, "run_in_background": True})))
+        self.assertIsNone(gate.evaluate(self.event("Bash", {"command": "python dispatch.py 任務"})))
+        self.assertIn("description", gate.evaluate(self.event("Bash", {
+            "command": "python dispatch.py --help && python dispatch.py 任務", "run_in_background": True})))
+        self.assertIsNone(gate.evaluate(self.event("Bash", {
+            "command": "python dispatch.py 任務", "run_in_background": True},
+            "PostToolUse", {"exit_code": 0})))
+
 
 if __name__ == "__main__":
     unittest.main()

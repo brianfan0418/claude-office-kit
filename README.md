@@ -16,9 +16,10 @@
 | [codex-dispatch](skills/codex-dispatch/SKILL.md) | 在 Windows 派工作業給 Codex | 大量讀檔、批次處理或第二意見，且已有企業訂閱與 CLI |
 | [doc-library](skills/doc-library/SKILL.md) | 文件收錄、查詢、OCR 核對與健檢 | 經常查詢 Word、PDF、Excel、PowerPoint |
 | [session_start.py](hooks/session_start.py)、[必讀清單](templates/session-start.json) | 依 AI 維護清單載入全文／章節／路徑，檢查缺檔與長度；附工具及工作摘要 | 開場、恢復與壓縮後重新進入狀況，兩端共用 |
-| [skill_gate.py](hooks/skill_gate.py)、[說明](hooks/README-session-start.md) | 寫規則、專案文件與派工前檢查寫法 skill 已載入 | 已採用 PreToolUse／PostToolUse hooks 的 Claude／Codex |
+| [skill_gate.py](hooks/skill_gate.py)、[說明](hooks/README-session-start.md) | 檢查寫法 skill；Claude 背景派工／等待須 description「任務名（模型・強度）」 | 兩端寫法檢查；Codex 對等背景畫面未確認 |
+| [wrapup_nudge.py](hooks/wrapup_nudge.py)、[context_status.py](hooks/context_status.py) | 官方 context 達 70% 且尚缺寫法 skill 時，同對話提醒一次整理交接 | Claude Code 選用 statusLine＋UserPromptSubmit；Cowork／App 用量來源與 Codex 對等方式未確認 |
 | [block_dangerous.py](hooks/block_dangerous.py) | 攔截部分破壞性指令、自身設定修改與前景等待 | AI 有執行指令或改檔權限；仍須搭配平台權限控制，hook 介面依平台驗證 |
-| [install_hooks.py](hooks/install_hooks.py)、[Claude 設定](hooks/settings.example.json)、[Codex 設定](hooks/codex-hooks.example.json) | 備份合併開場、防護與寫法 gate；Codex 另需原生信任審閱 | 已決定採用所選平台 hooks；不替對方安裝 |
+| [install_hooks.py](hooks/install_hooks.py)、[Claude 設定](hooks/settings.example.json)、[Codex 設定](hooks/codex-hooks.example.json) | 備份合併 hooks；Claude 可選官方用量並沿用既有 statusLine；Codex 另需信任審閱 | 已決定採用所選平台 hooks；不替對方安裝 |
 | [convert_docs.py](tools/convert_docs.py)、[說明](tools/README-convert-docs.md) | 原檔唯讀，產生 Markdown、索引與來源資訊 | 需要全文查詢、引用或合約登錄；先盤點既有 OCR 工具 |
 | [outlook-watch.py](tools/outlook-watch.py)、[說明](tools/README-outlook-watch.md) | 在 Windows 以 Outlook COM 監看新信與附件 | 已使用傳統版 Outlook，需供 AI 讀取新信提示 |
 | [plugin/](plugin/) | 依官方結構封裝 skills、hooks 與所需工具 | 在 Cowork 使用選定資源；安裝前依指南裁減未採用項目 |
@@ -27,7 +28,7 @@
 | [codex-quota.py](tools/codex-quota.py)、[claude-quota.py](tools/claude-quota.py) | Codex 官方限制查詢；Claude 官方入口與企業 API 限制 | 需要判斷各自帳號用量，查不到時保持未知 |
 | [codex-autoupdate.py](tools/codex-autoupdate.py) | npm 升級、實測、回退、模型清單更新及收件匣通知 | 希望維持 CLI 與知識資料，可選用工作排程器 |
 | [official-docs-fetch.py](tools/official-docs-fetch.py) | 整批下載 Anthropic／OpenAI 官方建議，一頁一檔 | 希望 AI 讀取本機參考文件，可重跑更新 |
-| [dispatch.py](tools/dispatch.py)、[任務範本](templates/tasks/合約欄位整理/task.json) | `python dispatch.py 合約欄位整理`；交辦及設定存任務資料夾，底層沿用 codex-run 引擎 | 背景面板以中文任務名稱辨識，一般非 Git 工作區 |
+| [dispatch.py](tools/dispatch.py)、[任務範本](templates/tasks/合約欄位整理/task.json) | 交辦及設定存任務資料夾，短指令供 AI 執行，沿用 codex-run 引擎 | Claude 背景畫面顯示「任務名（模型・強度）」；一般非 Git 工作區 |
 | [dispatch-status.py](tools/dispatch-status.py) | 派工狀態及缺報告／失敗／中斷總覽 | 跨對話接手與盤點待處理工作 |
 | [doc-audit.py](tools/doc-audit.py) | 修改時間、索引及本機連結的落差線索；Git 選用 | 預設不用 Git，仍需核對文件與實況 |
 | [registry.py](tools/registry.py)、[工具登記表](tools/REGISTRY.md)、[知識索引](knowledge/INDEX.md) | 從工具檔頭與知識 frontmatter 自動產生索引 | 寫新工具或查既有資源前先查登記表 |
@@ -37,6 +38,8 @@
 新增工作管理工具的輸入、官方依據、Windows 指令及工作排程器設定說明集中於[工具說明](tools/README-ai-management.md)。新增程式僅用 Python 標準函式庫，不建立任何排程；是否採用及何時執行，可由您與您的 AI 決定。
 
 開場清單、Claude 的 `@path`、Codex 的 AGENTS.md／SessionStart、寫法 skill gate 與介面限制見 [開場說明](hooks/README-session-start.md)。清單由專案 AI 自行維護，hook 照原文載入；沒有清單仍保留 HANDOFF 行為，每 session 提示建立清單一次。
+
+背景派工顯示、70% context 收尾提醒與設定依據亦見開場說明。建議您的 AI 提醒您在 Claude Code v2.1.283 以上執行官方 `/doctor prompt-audit`（別名 `/checkup prompt-audit`）審查規則檔；範圍、限制及 Cowork／Codex 未確認事項見 [採用指南](GUIDE-FOR-CLAUDE.md#建議執行官方規則檔審查)。
 
 ## 合約資源
 

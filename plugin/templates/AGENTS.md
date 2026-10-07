@@ -7,6 +7,8 @@
 - 寫新腳本前請先查工具登記表（工具包 `tools/REGISTRY.md`、專案 `scripts/REGISTRY.md` 或 `.ai-office/tools/REGISTRY.md`），已有的直接使用；新增後重建登記表。
 - 寫規則、skill 或派工前請完整讀取工具包 `handoff-docs`；寫專案交接、決策與規格再讀 `project-docs`。採用 gate 後以成功讀取事件記錄；壓縮後重讀。
 - 派工先寫 `tasks/<中文任務名稱>/brief.md` 與 `task.json`，背景命令用 `python dispatch.py 任務名稱`，進度加 `--status`。設定放任務檔；完成後讀 result.md、summary.json 並核對完成標準。
+- 背景派工與背景等待的 description（工具有提供時）請寫「任務名（模型・強度）」，例如「合約欄位整理（gpt-6.1-sol・high）」；先核對 task.json 與 CLI 實際選擇，描述不放指令或路徑。Codex 對應背景面板及 description 參數未確認，請勿虛構；可在對話回報同一描述。
+- 若目前介面明示 context 已達 70%，建議載入尚缺的 handoff-docs、project-docs，把 HANDOFF 更新到可接手狀態。Codex UserPromptSubmit 已有官方機制，但取得用量並自動觸發的對應機制未確認，不以 Claude 用量代替。
 - 每輪結論、決定及修改更新至 `docs/HANDOFF.md`；預設沿用檔案版本制度，只有專案已採用 Git 才提交。
 - 事實附原始檔路徑、頁碼或條號；查不到或未驗證就明示。私人文件與登入資料保留私人工作區。
 - 寄信、提交表單、公開發布、付款或新增權限時，依使用者授權範圍處理；有阻擋時回報原因，不自行擴大權限。

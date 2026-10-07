@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import uuid
+import time
 
 
 def state_path(session, kind, extra=""):
@@ -68,3 +69,9 @@ def loaded_skills(session):
     loaded = set(read_state(state_path(session, "skill-gate")).get("loaded", []))
     return loaded | {s for s in ("handoff-docs", "project-docs")
                      if read_state(state_path(session, "skill-loaded", s)).get("loaded")}
+
+
+def reset_context(session):
+    """SessionStart 使上一個開場／壓縮前的用量失效；保留同對話已提醒標記。"""
+    if session:
+        write_state(state_path(session, "context-boundary"), {"since": time.time()})

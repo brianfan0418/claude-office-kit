@@ -1,0 +1,6 @@
+{
+  "statusLine": {
+    "type": "command",
+    "command": "python \"C:/Users/YourName/.claude/hooks/context_status.py\""
+  }
+}

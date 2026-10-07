@@ -252,6 +252,12 @@ def main(argv=None):
     parser.add_argument("--check", action="store_true", help="清單、檔案或章節有誤時回傳 1；hook 預設仍回傳 context")
     args = parser.parse_args(argv)
     data = {"cwd": str(args.cwd)} if args.cwd else read_input()
+    # 先使舊用量失效，避免後續文件查詢期間每輪 hook 看見壓縮前的數值。
+    try:
+        from hook_state import reset_context
+        reset_context(data.get("session_id"))
+    except OSError:
+        pass
     start = data.get("cwd") or os.getcwd()
     root = project_root(start)
     registry = registry_context(root, args.tools_dir)

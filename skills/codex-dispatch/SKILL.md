@@ -50,7 +50,9 @@ python dispatch.py 合約欄位整理 --status
 python dispatch.py --list
 ```
 
-背景任務面板只需顯示短命令。第一條派出獨立 worker，`ok:true` 表示確認啟動，送出命令結束不代表完成；輸出預設在 `inbox/codex/合約欄位整理/`。既有紀錄保留，新的交辦請用新名稱；未確認啟動先查狀態，不立刻重送。
+Claude 的背景派工與背景等待，工具呼叫的 description 請填「任務名（模型・強度）」，例如「合約欄位整理（gpt-6.1-sol・high）」；畫面上看到的是任務名與模型強度。請先核對 task.json 與 CLI 選擇，模型 null 時不能猜；描述不放指令或路徑。工具 JSON、hook 檢查及本次使用者的 App 實測依據見 [背景標籤說明](../../hooks/README-session-start.md#背景畫面顯示任務模型與強度)。Codex 對等背景面板與 description 參數未確認，不虛構工具欄位；可在對話用同一描述回報。
+
+短指令是實際執行入口。第一條派出獨立 worker，`ok:true` 表示確認啟動，送出動作結束不代表完成；輸出預設在 `inbox/codex/合約欄位整理/`。既有紀錄保留，新的交辦請用新名稱；未確認啟動先查狀態，不立刻重送。
 
 如需等待，指令仍用任務名稱：
 

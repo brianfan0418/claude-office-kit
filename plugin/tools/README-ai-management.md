@@ -50,7 +50,7 @@ python "C:\AI\office-kit\tools\codex-autoupdate.py" --knowledge "C:\AI\work\know
 
 採用時可由 AI 一次性執行 `python "<工具包>/tools/dispatch.py" --install "<專案>"`，部署根目錄的 `dispatch.py` 及 `.ai-office/tools/` 相依程式。既有不同內容備份為 `.bak-時間`；不設排程或改登入。任務範本另存 `tasks/_template/`，由 AI 複製、改名及填妥。
 
-任務位置為 `tasks/合約欄位整理/brief.md` 與 `task.json`。這是參考 [npm scripts](https://docs.npmjs.com/cli/v11/using-npm/scripts/) 將可讀名稱對應設定的慣例；本工具包用 Python＋JSON，不需要安裝 npm 才能派工。下列短命令在專案根目錄執行，背景面板只需顯示任務名稱：
+任務位置為 `tasks/合約欄位整理/brief.md` 與 `task.json`。這是參考 [npm scripts](https://docs.npmjs.com/cli/v11/using-npm/scripts/) 將可讀名稱對應設定的慣例；本工具包用 Python＋JSON，不需要安裝 npm 才能派工。下列短命令供 AI 在專案根目錄執行；Claude 背景畫面給人看的內容由 description 顯示「合約欄位整理（gpt-6.1-sol・high）」：
 
 ```powershell
 python dispatch.py 合約欄位整理
@@ -58,7 +58,9 @@ python dispatch.py 合約欄位整理 --status
 python dispatch.py --list
 ```
 
-預設短指令派出獨立 worker，回傳一行 JSON；`ok:true` 是確認啟動，背景面板中的送出命令結束不代表工作完成。預設輸出 `inbox/codex/合約欄位整理/` 必須不存在；新的交辦用新名稱，既有工作先查狀態，不覆寫。單次 `--status` 不等待，`--list` 列全專案總覽。
+背景派工與背景等待的 description 均請寫「任務名（模型・強度）」，模型與強度先核對任務設定及 CLI 選擇；模型 null 時不能猜。正確工具呼叫、格式 gate、本次使用者的 Claude Code App 實測依據及 Codex 對應畫面未確認事項見 [背景標籤說明](../hooks/README-session-start.md#背景畫面顯示任務模型與強度)。命令保留供實際執行，不作為人類面板標籤。
+
+預設短指令派出獨立 worker，回傳一行 JSON；`ok:true` 是確認啟動，送出動作結束不代表工作完成。預設輸出 `inbox/codex/合約欄位整理/` 必須不存在；新的交辦用新名稱，既有工作先查狀態，不覆寫。單次 `--status` 不等待，`--list` 列全專案總覽。
 
 需要等待時短指令為 `python dispatch.py 合約欄位整理 --wait`，timeout 從 task.json 讀分鐘數；逾時結束碼為 2，worker 繼續。Claude 可用工具背景執行功能；Codex hook 的 Bash 輸入不含背景參數，會攔等待，建議單次查狀態或在獨立終端等待。兩端差異與官方依據見 [開場說明](../hooks/README-session-start.md)。
 

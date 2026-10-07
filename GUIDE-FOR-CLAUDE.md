@@ -32,9 +32,10 @@ Codex 與 Claude 均可協助資源盤點、派工、執行與驗收；以下 Cl
 | `codex-dispatch` | 建議複製 skill；檢查現有 Codex CLI 與登入，用虛構文件測試讀寫與回報落檔 | 建議選入外掛 `skills/codex-dispatch/`；僅在當前環境實際能執行 Codex CLI 時派工；Windows 主機 CLI 與企業登入能否由 Cowork 使用未查證，無法執行時改開獨立任務核對 |
 | `doc-library` | 建議複製 skill；先盤點 OCR，再依 `tools/README-convert-docs.md` 收錄、查詢與健檢 | 建議選入外掛 `skills/doc-library/` 與 `tools/`；確認 Python、格式依賴與授權路徑後才轉檔；主機 OCR 與 GPU 可用性未查證 |
 | `session_start.py`／`session-start.json` | 建議由專案 AI 維護必讀清單，以全文／章節／路徑載入；附每支工具一句用途與工作摘要；用缺檔／超量示例核對 | 建議保留外掛 SessionStart，複製清單到授權專案；核對工作目錄及 Python，Cowork 未實測 |
-| `skill_gate.py`／`hook_state.py` | 建議合併 PreToolUse／PostToolUse，未載入 handoff-docs 時擋規則及派工；專案文件加 project-docs | 建議保留外掛 gate；先成功載入 Skill，再用虛構寫檔核對；Cowork 工具事件未實測 |
+| `skill_gate.py`／`hook_state.py` | 建議合併工具事件；檢查寫法 skill，背景派工／等待的 description 須「任務名（模型・強度）」 | 建議保留 gate 並用假輸入核對；Cowork 事件與背景顯示未實測 |
+| `wrapup_nudge.py`／`context_status.py` | 建議選用官方 statusLine 用量＋UserPromptSubmit；context 達 70% 且尚缺 skill 時提醒一次收尾，原 statusLine 可沿用 | 用量來源未確認；只保留 hook 不會憑空取得用量，請先核對目標環境 |
 | `block_dangerous.py` | 建議合併 `PreToolUse` 設定；用 JSON 假輸入測試阻擋結果，不實際執行破壞性指令 | 建議保留外掛的 `PreToolUse` 事件；以假輸入與平台實際工具名稱核對 matcher；本套攔截範圍在 Cowork 未驗證，不視為完整安全邊界 |
-| `install_hooks.py`／設定範例 | 建議採用開場、防護及 gate 時先 dry-run，備份合併；只採用部分時由 AI 合併所選事件 | 建議外掛由 hooks/hooks.json 載入；不執行主機使用者層級安裝器 |
+| `install_hooks.py`／設定範例 | 建議先 dry-run；收尾用量選 --with-context-status，備份並轉交既有狀態列；只採用部分時合併所選事件 | 建議由 hooks/hooks.json 載入；外掛不設定主機 statusLine，不執行使用者層安裝器 |
 | `convert_docs.py` | 建議依轉檔說明，只安裝選定格式所需依賴；以 `--help`、虛構檔轉換與 `--lint` 驗證 | 建議外掛附轉檔程式與說明；在 Cowork 確認依賴，輸出寫至授權工作資料夾，不寫入外掛安裝目錄 |
 | `outlook-watch.py` | 建議依 Outlook 說明在 Windows、傳統版 Outlook 與 pywin32 環境測試；工作排程器由使用者另行選擇 | 建議Cowork 執行 Windows Outlook COM 的能力未查證；若主機已有 inbox，可讀授權的匯出資料夾；外掛不等於 Outlook 連接器，也不安裝排程 |
 | `plugin/`／`build_plugin.py` | 建議可用 `claude --plugin-dir "<office-kit>/plugin"` 測試；已有單獨 skills／hooks 時先避免重複載入 | 建議依下一節裁減與封裝後，上傳自訂外掛；可沿用您目前的介面 |
@@ -42,7 +43,7 @@ Codex 與 Claude 均可協助資源盤點、派工、執行與驗收；以下 Cl
 | `codex-quota.py`／`claude-quota.py` | 建議查目前 Codex 登入帳號；Claude 查 `/usage`，企業即時剩餘額度 API 未查得 | 建議先核對能否存取主機 CLI；不能執行時使用產品 Usage 畫面，不以空值代替剩餘額度 |
 | `codex-autoupdate.py` | 建議先 dry-run，再按工具說明選用升級與收件匣通知；不自動設排程 | 建議由主機上的 Codex／Claude 管理 CLI 更新；Cowork 內存取主機 npm 與登入尚未驗證，知識請更新私人工作區副本 |
 | `official-docs-fetch.py` | 建議下載到私人參考目錄；重跑更新，先看 manifest 的成功／失敗及日期 | 建議僅在當前環境有 Python 及網路時下載到授權資料夾；也可讀取主機已下載文件 |
-| `dispatch.py`／任務範本／派工引擎 | 建議先部署專案入口，交辦與設定存 tasks，再背景執行 `python dispatch.py 合約欄位整理`；結果／摘要另驗收 | 建議僅在實際可執行 CLI 時使用短指令；交辦及紀錄留授權工作區，Windows 主機整合未驗證 |
+| `dispatch.py`／任務範本／派工引擎 | 建議部署入口，交辦／設定存 tasks；背景畫面由 description 顯示「任務名（模型・強度）」；結果另驗收 | 建議僅在實際可執行 CLI 時採用；短指令供執行，背景畫面機制與 Windows 主機整合未驗證 |
 | `doc-audit.py` | 建議以修改時間及本機連結核對文件落差，Git 檢查選用 | 建議對授權工作資料夾執行；修改時間只作線索，不自動改寫使用者文件 |
 | `registry.py`／`REGISTRY.md`／`INDEX.md` | 建議寫新工具前先查登記表，修改檔頭或 frontmatter 後重建 | 建議查閱外掛附的登記表及知識索引；私人新增資源的索引寫在工作區，不修改安裝副本 |
 
@@ -53,6 +54,22 @@ Codex 與 Claude 均可協助資源盤點、派工、執行與驗收；以下 Cl
 兩端可用同一 `docs/session-start.json`、工具摘要及寫法檢查。建議 Codex 合併 [AGENTS 範本](templates/AGENTS.md)，Claude 合併 [CLAUDE 範本](templates/CLAUDE.md)；共用規則可由 Claude 用原生 `@AGENTS.md` 匯入。Codex 已有 SessionStart／PreToolUse／PostToolUse，安裝器選 `--platform codex`，在 `/hooks` 審閱及信任；不假設 Codex 解析 Claude 的 `@path`。官方依據、長度設定、手動備援及缺檔處理見 [開場說明](hooks/README-session-start.md)。
 
 寫新腳本前建議查開場所列登記表；寫規則、skill 及派工前完整載入 handoff-docs，專案文件另讀 project-docs。清單由 AI 依現行規則與定案自行增減，hook 不替它挑文件。採用本地 skills 時 Claude 用 `.claude/skills`，Codex 用 `.agents/skills`，亦可直接讀原檔；兩端派工均用任務名稱短指令。
+
+Claude Code 背景派工與背景等待，建議把工具 description 寫成「合約欄位整理（gpt-6.1-sol・high）」這種「任務名（模型・強度）」；設定核對後再填，短指令只供執行，畫面給人看的內容是描述。Bash App 顯示方式為本次使用者已實測，Codex 對等畫面未確認。收尾提醒、官方用量來源、既有狀態列的合併／復原與未實測介面，統一見 [開場說明](hooks/README-session-start.md)。
+
+## 建議執行官方規則檔審查
+
+供協助採用的 AI 參考，查閱日期：2026-10-07。建議請使用者在 Claude Code v2.1.283 以上的對話執行 `/doctor prompt-audit`，別名是 `/checkup prompt-audit`；這不是終端的 `claude doctor`。它檢查為舊模型寫的指示、不存在的檔案或指令，以及互相矛盾的規則檔，先提出報告與建議修改，使用者同意後才改檔。[官方記憶文件](https://code.claude.com/docs/en/memory#audit-your-instruction-files)、[官方命令說明](https://code.claude.com/docs/en/commands)
+
+預設範圍是 CLAUDE.md、CLAUDE.local.md、AGENTS.md，以及專案 `.claude/` 與使用者 `~/.claude/` 下的 rules、skills、commands、subagents、output styles。若想先核對單一文件或資料夾，可指定路徑，例如：
+
+~~~text
+/doctor prompt-audit .claude/skills/某技能
+~~~
+
+審查經由內建 `/claude-api` skill 執行；skillOverrides 關閉該 skill，或設定 disableBundledSkills 時無法使用。若不可用，建議先確認版本與設定，依企業管理制度處理，不自行改管理員設定。[官方使用限制](https://code.claude.com/docs/en/memory#audit-your-instruction-files)
+
+Cowork 是否支援這個內建命令尚未確認。[Cowork 外掛文件](https://support.claude.com/en/articles/13837440-use-plugins-in-claude)確認外掛 skills／commands 可使用，但未證明 Claude Code 的這個內建命令可用。Codex 的專用對等功能亦未確認；[官方 developer commands](https://learn.chatgpt.com/docs/developer-commands?surface=cli)的 /review 是程式審查，不能當成同一功能。可請 Codex 或 Claude 直接讀已授權的規則檔，先列問題、來源與建議，依既有修改授權處理；這是人工交辦方式。OpenAI 也建議隨模型更替重新審查 skills、AGENTS.md 及提示，見[官方指示檔整理建議](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra)。
 
 ## Cowork 外掛結構與封裝
 
@@ -67,6 +84,9 @@ plugin/
   hooks/block_dangerous.py
   hooks/skill_gate.py
   hooks/hook_state.py
+  hooks/wrapup_nudge.py
+  hooks/context_status.py
+  hooks/statusline.example.json
   templates/                必讀清單、CLAUDE／AGENTS 及任務資料夾範本
   tools/                    所附 Python 程式與說明
   knowledge/                模型知識及自動產生索引
