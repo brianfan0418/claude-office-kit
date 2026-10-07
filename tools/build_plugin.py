@@ -13,7 +13,7 @@ import registry
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUT = ROOT / "plugin"
 TOOL_FILES = ("convert_docs.py", "README-convert-docs.md",
-              "outlook-watch.py", "README-outlook-watch.md", "README-ai-management.md",
+              "outlook-watch.py", "README-outlook-watch.md", "README-ai-management.md", "dispatch.py",
               "office_common.py", "codex_rpc.py", "win_memory.py", "codex-quota.py", "claude-quota.py",
               "codex-autoupdate.py", "codex-run.py", "codex-queue.py", "dispatch-status.py",
               "official-docs-fetch.py", "doc-audit.py", "registry.py", "REGISTRY.md")
@@ -26,8 +26,12 @@ def expected_files():
             rel = path.relative_to(ROOT).as_posix()
             content = path.read_text(encoding="utf-8")
             files[rel] = content.replace("<工具包資料夾>", "${CLAUDE_PLUGIN_ROOT}").encode()
-    for name in ("session_start.py", "block_dangerous.py"):
+    for name in ("session_start.py", "block_dangerous.py", "skill_gate.py", "hook_state.py",
+                 "README-session-start.md", "install_hooks.py", "settings.example.json", "codex-hooks.example.json"):
         files[f"hooks/{name}"] = (ROOT / "hooks" / name).read_bytes()
+    for path in sorted((ROOT / "templates").rglob("*")):
+        if path.is_file():
+            files[path.relative_to(ROOT).as_posix()] = path.read_bytes()
     for name in TOOL_FILES:
         files[f"tools/{name}"] = (ROOT / "tools" / name).read_bytes()
     # 外掛只附選定工具，登記表也依實際封裝內容產生。
@@ -38,15 +42,18 @@ def expected_files():
     files["tools/REGISTRY.md"] = tool_index.encode("utf-8")
     for path in sorted((ROOT / "knowledge").glob("*.md")):
         files["knowledge/" + path.name] = path.read_bytes()
-    manifest = {"name": "office-work-kit", "version": "0.2.0",
+    manifest = {"name": "office-work-kit", "version": "0.3.0",
                 "description": "文件證據、交接、派工記錄、模型知識與選用工作管理工具。",
                 "repository": "https://github.com/brianfan0418/claude-office-kit",
                 "license": "MIT", "author": {"name": "Office kit contributors"}}
     hooks = {"hooks": {
         "SessionStart": [{"matcher": "startup|resume|clear|compact", "hooks": [
             {"type": "command", "command": 'python "${CLAUDE_PLUGIN_ROOT}/hooks/session_start.py"'}]}],
-        "PreToolUse": [{"matcher": "Bash|PowerShell|Edit|Write|MultiEdit", "hooks": [
-            {"type": "command", "command": 'python "${CLAUDE_PLUGIN_ROOT}/hooks/block_dangerous.py"'}]}]}}
+        "PreToolUse": [{"matcher": "Bash|PowerShell|Edit|Write|MultiEdit|Agent", "hooks": [
+            {"type": "command", "command": 'python "${CLAUDE_PLUGIN_ROOT}/hooks/block_dangerous.py"'},
+            {"type": "command", "command": 'python "${CLAUDE_PLUGIN_ROOT}/hooks/skill_gate.py"'}]}],
+        "PostToolUse": [{"matcher": "Skill|Read|Bash|PowerShell", "hooks": [
+            {"type": "command", "command": 'python "${CLAUDE_PLUGIN_ROOT}/hooks/skill_gate.py"'}]}]}}
     for rel, value in ((".claude-plugin/plugin.json", manifest), ("hooks/hooks.json", hooks)):
         files[rel] = (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode()
     files["README.md"] = (
@@ -57,7 +64,11 @@ def expected_files():
         "[採用指南](https://github.com/brianfan0418/claude-office-kit/blob/main/GUIDE-FOR-CLAUDE.md)。\n\n"
         "新增工作管理資源見 [工具說明](tools/README-ai-management.md)：模型與額度查詢、"
         "CLI 更新及收件匣通知、官方文件下載、背景派工及狀態、文件落差與登記表。"
-        "模型知識見 [knowledge/codex-models.md](knowledge/codex-models.md)。Codex 與 Claude 均可協助選用，"
+        "模型知識見 [knowledge/codex-models.md](knowledge/codex-models.md)。"
+        "必讀清單、工具摘要、寫法 skill gate 與兩端原生機制見 "
+        "[開場說明](hooks/README-session-start.md)；[templates/](templates/) 附 JSON 清單、"
+        "CLAUDE／AGENTS 範本及中文任務資料夾。派工可用 `python dispatch.py 合約欄位整理`，"
+        "交辦及設定由任務檔讀取。Codex 與 Claude 均可協助選用，"
         "工具不設定排程；執行資料請存授權工作區，維持外掛安裝目錄唯讀。\n\n"
         "外掛結構已依官方格式封裝；本套 Python hooks 在 Cowork、Windows COM、"
         "主機 Codex 登入與 OCR／GPU 的整合未驗證。轉檔與工具依賴不會自動安裝。\n"
@@ -86,6 +97,10 @@ def main(argv=None):
             if not args.check:
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_bytes(content)
+    if not args.check:
+        # 內容未變但來源有修改時，登記表／索引的 mtime 仍須表示已核對。
+        for rel in ("tools/REGISTRY.md", "knowledge/INDEX.md"):
+            (args.out / rel).touch()
     if args.check and mismatches:
         print("外掛副本不同步：" + "、".join(mismatches))
         return 1

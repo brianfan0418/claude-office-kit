@@ -57,7 +57,7 @@ description: 專案固定文件標準（CLAUDE.md、README、HANDOFF、ROADMAP�
 4. 建議保存系統處理紀錄，說明做了什麼；已有版本制度的專案沿用其制度。
 5. 建議用 `Get-Content docs\HANDOFF.md -TotalCount 10` 與實際檔案確認真的寫進去。
 
-原因：每段工作都要留下下一個人可以直接接手的乾淨狀態，否則下一個 AI 會重做或誤判已完成。開場的 SessionStart hook 會把 HANDOFF 前 60 行放進 context，所以 HANDOFF 最重要的內容要放在最前面。
+原因：每段工作都要留下下一個人可以直接接手的乾淨狀態，否則下一個 AI 會重做或誤判已完成。開場 SessionStart hook 依專案 docs/session-start.json 載入全文或指定章節；沒有清單時仍讀 HANDOFF 前 60 行。建議將每輪要遵守的定案規格加入清單，由專案 AI 維護，採用說明見工具包 hooks/README-session-start.md。
 
 ## 開新專案
 

@@ -1,6 +1,6 @@
 """以 Windows Job Object 限制本 worker 與子行程的合計 committed memory。
 
-用法：codex-run.py submit ... --memory-max 2G；由 worker import，預設不限制。
+用法：python dispatch.py 任務名稱；task.json 的 memory_max 選用，worker 內部 import。
 來源：https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects
 """
 import ctypes

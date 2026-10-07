@@ -128,6 +128,26 @@ class CommandLineInterface(unittest.TestCase):
 
 
 class ForegroundWait(unittest.TestCase):
+    def test_short_task_commands_wait_and_data(self):
+        for command in ("python dispatch.py 合約欄位整理 --wait",
+                        'py -3 "C:/AI tools/dispatch.py" 合約欄位整理 --wait',
+                        "python dispatch.py 任務 --help && python dispatch.py 任務 --wait"):
+            with self.subTest(command=command):
+                self.assertEqual(verdict(command)[0], "deny")
+        for command in ("python dispatch.py 合約欄位整理", "python dispatch.py 合約欄位整理 --status",
+                        "python dispatch.py --list", "echo 'python dispatch.py 任務 --wait'",
+                        "cat > brief.md <<'END'\npython dispatch.py 任務 --wait\nEND"):
+            with self.subTest(command=command):
+                self.assertIsNone(verdict(command))
+        self.assertIsNone(block_dangerous.evaluate({"tool_name": "Bash", "tool_input": {
+            "command": "python dispatch.py 合約欄位整理 --wait", "run_in_background": True}}))
+
+    def test_codex_protected_patch_denies_and_read_allows(self):
+        patch = {"tool_name": "apply_patch", "tool_input": {"command": "*** Begin Patch\n*** Update File: .codex/hooks.json\n+x\n*** End Patch"}}
+        self.assertEqual(block_dangerous.evaluate(patch, "codex")[0], "deny")
+        self.assertIsNone(block_dangerous.evaluate({"tool_name": "Bash", "tool_input": {"command": "cat .codex/hooks.json"}}, "codex"))
+        self.assertEqual(block_dangerous.evaluate({"tool_name": "Write", "tool_input": {"file_path": ".codex/config.toml"}}, "codex")[0], "deny")
+
     def test_block_waits(self):
         cases = [
             ("python tools/codex-run.py wait inbox/codex/task", "Bash"),

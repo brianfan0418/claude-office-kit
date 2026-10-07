@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "cwd": ".",
+  "model": null,
+  "effort": "high",
+  "sandbox": "read-only",
+  "search": false,
+  "codex_home": null,
+  "memory_max": null,
+  "min_free": null,
+  "max_wait": 60,
+  "timeout": 120
+}

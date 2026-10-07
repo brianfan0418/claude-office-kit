@@ -1,6 +1,6 @@
 """背景派工給 Codex，保存交辦、事件、回覆、摘要；預設不需 Git。
 
-用法：python tools/codex-run.py submit --brief FILE --out DIR [--cwd DIR] [--model M] [--effort E] [--memory-max 2G] ｜ wait DIR [--timeout 分鐘] ｜ status DIR
+用法：python dispatch.py 任務名稱；本檔為派工引擎，對外使用任務資料夾入口。
 來源：Codex 官方 non-interactive 文件與 codex exec --help（0.160.1）；Windows subprocess 文件。
 """
 import argparse
@@ -11,7 +11,7 @@ import subprocess
 import sys
 import time
 import uuid
-from office_common import alive, cli, emit, memory_bytes, read_json, runtime_lock, state_dir, write_json, write_text
+from office_common import alive, available_memory, cli, emit, memory_bytes, read_json, runtime_lock, state_dir, write_json, write_text
 
 
 def job_status(out):
@@ -46,7 +46,8 @@ def submit(args):
         out.mkdir()  # 排他建立：既有紀錄一律保留
         params = {"cwd": str(cwd), "model": args.model, "effort": args.effort, "search": args.search,
                   "sandbox": args.sandbox, "codex_home": str(args.codex_home.expanduser().resolve()) if args.codex_home else None,
-                  "memory_max": args.memory_max}
+                  "memory_max": args.memory_max, "min_free": getattr(args, "min_free", None),
+                  "max_wait": getattr(args, "max_wait", 60)}
         job = {"id": str(out), "job_id": uuid.uuid4().hex, "status": "starting", "submitted_at": time.time(),
                "pid": os.getpid(), "params": params}
         write_text(out / "brief.md", brief)
@@ -68,9 +69,9 @@ def submit(args):
     deadline = time.monotonic() + 20
     while time.monotonic() < deadline:
         current = job_status(out)
-        if current["status"] in ("running", "done", "failed", "missing-report"):
-            emit({"ok": current["status"] in ("running", "done"), "id": str(out), "pid": worker.pid, "status": current["status"]})
-            return 0 if current["status"] in ("running", "done") else 1
+        if current["status"] in ("queued", "running", "done", "failed", "missing-report"):
+            emit({"ok": current["status"] in ("queued", "running", "done"), "id": str(out), "pid": worker.pid, "status": current["status"]})
+            return 0 if current["status"] in ("queued", "running", "done") else 1
         if not alive(worker.pid):
             break
         time.sleep(0.1)
@@ -91,6 +92,16 @@ def worker(out):
     write_json(out / "job.json", job)
     write_json(active, job)
     try:
+        if params.get("min_free"):
+            threshold = memory_bytes(params["min_free"])
+            deadline = time.monotonic() + params.get("max_wait", 60) * 60
+            job.update(status="queued")
+            write_json(out / "job.json", job)
+            write_json(active, job)
+            while available_memory() < threshold:
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("資源等待逾時；尚未啟動 Codex，請核對後以新任務名稱交辦")
+                time.sleep(min(5, max(0, deadline - time.monotonic())))
         if params["memory_max"]:
             from win_memory import apply_limit
             apply_limit(memory_bytes(params["memory_max"]))
@@ -148,9 +159,9 @@ def inspect(args):
     deadline = time.monotonic() + args.timeout * 60 if args.timeout is not None else None
     while True:
         status = job_status(args.id.expanduser().resolve())
-        if args.command == "status" or status["status"] not in ("starting", "running"):
+        if args.command == "status" or status["status"] not in ("starting", "queued", "running"):
             emit(status)
-            return 0 if status["status"] in ("starting", "running", "done") else 1
+            return 0 if status["status"] in ("starting", "queued", "running", "done") else 1
         if deadline is not None and time.monotonic() >= deadline:
             emit(dict(status, timed_out=True))
             return 2
@@ -170,6 +181,8 @@ def main(argv=None):
     sub.add_argument("--sandbox", choices=["read-only", "workspace-write"], default="workspace-write")
     sub.add_argument("--codex-home", type=Path)
     sub.add_argument("--memory-max", type=lambda s: s if memory_bytes(s) else s)
+    sub.add_argument("--min-free", type=lambda s: s if memory_bytes(s) else s)
+    sub.add_argument("--max-wait", type=float, default=60)
     for name in ("wait", "status", "_worker"):
         p = commands.add_parser(name)
         p.add_argument("id", type=Path)

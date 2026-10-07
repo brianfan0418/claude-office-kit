@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "max_chars": 24000,
+  "items": [
+    {
+      "path": "docs/HANDOFF.md",
+      "reason": "每次接手先知道已完成、進行中及待決事項",
+      "mode": "full"
+    },
+    {
+      "path": "docs/ROADMAP.md",
+      "reason": "需要討論下一步時讀取目前里程碑",
+      "mode": "path"
+    }
+  ]
+}

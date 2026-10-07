@@ -21,7 +21,7 @@ def jobs(root):
 
 def brief(root):
     rows = jobs(root)
-    counts = {name: sum(r["status"] == name for r in rows) for name in ("starting", "running", "failed", "interrupted", "missing-report", "unknown")}
+    counts = {name: sum(r["status"] == name for r in rows) for name in ("starting", "queued", "running", "failed", "interrupted", "missing-report", "unknown")}
     parts = [f"{key} {count}" for key, count in counts.items() if count]
     return "派工狀態：" + "；".join(parts) if parts else ""
 
@@ -32,7 +32,7 @@ def main(argv=None):
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     rows = jobs(args.root)
-    problems = sum(r["status"] not in ("done", "starting", "running") for r in rows)
+    problems = sum(r["status"] not in ("done", "starting", "queued", "running") for r in rows)
     if args.json:
         emit({"jobs": rows, "problems": problems})
     else:

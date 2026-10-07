@@ -1,0 +1,42 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/Users/YourName/.codex/hooks/session_start.py\" --tools-dir \"C:/AI/office-kit/tools\"",
+            "additionalContextLimit": 0
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|Write|Edit|MultiEdit|apply_patch|Agent|spawn_agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/Users/YourName/.codex/hooks/block_dangerous.py\" --platform codex"
+          },
+          {
+            "type": "command",
+            "command": "python \"C:/Users/YourName/.codex/hooks/skill_gate.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Skill|Read|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/Users/YourName/.codex/hooks/skill_gate.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

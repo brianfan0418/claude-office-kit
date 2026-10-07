@@ -21,7 +21,7 @@ description: 做與驗分開的流程：產出者把結果寫成檔案或 commit
 4. 開驗收者：
    - subagent：Claude Code 內用 Agent 工具派出，prompt 就是驗收單。
    - 新對話：開新的 Claude Code 視窗，貼上驗收單。
-   - 新的 Codex 任務：照 skill `codex-dispatch`，驗收單當交辦檔，加 `-s read-only`。
+   - 新的 Codex 任務：照 skill `codex-dispatch`，驗收單存任務資料夾的 brief.md，task.json 設 sandbox 為 read-only；以 `python dispatch.py 驗收任務` 派出。
 5. 驗收者逐項回報：通過、未通過或未驗證，每項附證據。
 6. 產出者讀報告：
    - 未通過的項目修正後，產生新的 commit，回到步驟 3 再驗一次。

@@ -1,6 +1,6 @@
 ---
 name: handoff-docs
-description: 寫或修改給 AI 看的文件或指示時先載入：CLAUDE.md、計畫書、交接單、研究任務書、決策紀錄、操作程序（讀者是 AI）、skill、交給 Codex 或 subagent 的交辦。也用在把一堆「不要…」的規則改成可執行版本、整理互相衝突的規則。
+description: 寫或修改給 AI 看的文件或指示時先載入：CLAUDE.md／AGENTS.md、計畫書、交接單、研究任務書、決策紀錄、操作程序（讀者是 AI）、skill、交給 Codex 或 subagent 的交辦。也用在把一堆「不要…」的規則改成可執行版本、整理互相衝突的規則。
 ---
 
 # 寫給後續 AI 的文件

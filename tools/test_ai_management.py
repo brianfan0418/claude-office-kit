@@ -317,6 +317,28 @@ class QuotaTests(Base):
 
 
 class DispatchTests(Base):
+    def test_queued_job_is_active_and_not_a_problem(self):
+        out = self.root / "queued"
+        common.write_json(out / "job.json", {"pid": os.getpid(), "status": "queued"})
+        self.assertEqual(run.job_status(out)["status"], "queued")
+        self.assertIn("queued 1", status.brief(self.root))
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(status.main([str(self.root), "--json"]), 0)
+
+    def test_resource_wait_in_worker_times_out_without_launching_cli(self):
+        out = self.root / "queue-worker"
+        common.write_json(out / "job.json", {"job_id": "resource-test", "params": {
+            "cwd": str(self.root), "model": None, "effort": None, "search": False,
+            "sandbox": "read-only", "codex_home": None, "memory_max": None,
+            "min_free": "1G", "max_wait": 0}})
+        with mock.patch.object(run, "available_memory", return_value=0), \
+                mock.patch.object(run.subprocess, "Popen") as child:
+            self.assertEqual(run.worker(out), 1)
+            child.assert_not_called()
+        summary = common.read_json(out / "summary.json")
+        self.assertFalse(summary["ok"])
+        self.assertIn("尚未啟動 Codex", summary["error"])
+
     def test_interrupted_and_missing_report(self):
         job = self.root / "job"
         common.write_json(job / "job.json", {"pid": -1, "status": "running"})

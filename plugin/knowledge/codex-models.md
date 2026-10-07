@@ -35,11 +35,13 @@ updated: 2026-10-07
 
 建議先用 CLI 回傳的預設強度，再按工作調整：`low` 適合範圍明確的小任務，`medium` 適合需要規劃的日常工作，`high`／`xhigh` 可用於多來源核對、複雜審閱及取捨分析。`max` 增加單項工作的推理時間；`ultra` 可將複雜任務分交代理人並行。一般工作不必預設選最高強度，Luna 不支援 Ultra。[官方選擇說明](https://learn.chatgpt.com/docs/models#pick-a-reasoning-effort)
 
-CLI 設定範例（可由 Codex 或 Claude 協助執行）：
+派工設定請寫入任務資料夾的 task.json，背景命令只保留名稱；以下可由 Codex 或 Claude 協助填妥：
 
-```powershell
-codex exec --skip-git-repo-check -m gpt-6.1-sol -c model_reasoning_effort=high "核對目前文件並說明依據"
+```json
+{"version": 1, "model": "gpt-6.1-sol", "effort": "high", "sandbox": "read-only"}
 ```
+
+寫好同資料夾 brief.md 並部署專案入口後，用 `python dispatch.py 文件核對` 送出、加 `--status` 查進度。完整任務格式與來源見 [工具說明](../tools/README-ai-management.md)。
 
 建議只使用表中該模型支援的強度。CLI 的 `model_reasoning_effort`、OpenAI API 的 `reasoning.effort`、Claude 的推理控制不是共同刻度；名稱相同也不能推定效果或預設值相同。此檔的預設欄是 CLI 觀察值，API 請另查[推理文件](https://developers.openai.com/api/docs/guides/reasoning)。
 

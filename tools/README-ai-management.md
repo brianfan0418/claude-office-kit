@@ -11,7 +11,7 @@
 | [claude-quota.py](claude-quota.py) | 官方查詢入口與企業 API 限制說明 | [Claude Code /usage](https://code.claude.com/docs/en/costs)、[Analytics APIs](https://platform.claude.com/docs/en/manage-claude/analytics-api) |
 | [codex-autoupdate.py](codex-autoupdate.py) | npm 新版升級、短回覆實測、失敗回退、模型清單與收件匣通知 | [官方 CLI 安裝](https://learn.chatgpt.com/docs/cli)、[App Server 模型清單](https://learn.chatgpt.com/docs/app-server) |
 | [official-docs-fetch.py](official-docs-fetch.py) | 四組官方來源，一頁一檔及來源 manifest | [Claude Code 索引](https://code.claude.com/docs/llms.txt)、[Claude Platform 索引](https://platform.claude.com/llms.txt)、[OpenAI 使用文件索引](https://learn.chatgpt.com/llms.txt)、[OpenAI API 索引](https://developers.openai.com/api/docs/llms.txt) |
-| [codex-run.py](codex-run.py)、[codex-queue.py](codex-queue.py) | 背景送出、資源等待、結果與摘要 JSON | [官方非互動執行](https://learn.chatgpt.com/docs/noninteractive)、CLI help；[Python subprocess](https://docs.python.org/3/library/subprocess.html) |
+| [dispatch.py](dispatch.py) 與 codex-run／queue 引擎 | 中文短指令、任務設定檔、背景 worker、結果與摘要 JSON | [npm scripts](https://docs.npmjs.com/cli/v11/using-npm/scripts/) 的名稱與設定分離慣例；[官方非互動執行](https://learn.chatgpt.com/docs/noninteractive)、[Python subprocess](https://docs.python.org/3/library/subprocess.html) |
 | [dispatch-status.py](dispatch-status.py) | 執行中、完成、失敗、缺報告、中斷等狀態 | 同工具包 `job.json`、`summary.json`、回覆檔與行程狀態，不推測交付物 |
 | [doc-audit.py](doc-audit.py) | HANDOFF 修改時間落後、索引落差、本機失效連結；選用 Git 檢查 | [Path.stat](https://docs.python.org/3/library/pathlib.html#pathlib.Path.stat)、工具包登記表及實際檔案 |
 | [registry.py](registry.py) | 工具 [REGISTRY.md](REGISTRY.md) 與知識 [INDEX.md](../knowledge/INDEX.md) | Python 檔頭 docstring（[AST](https://docs.python.org/3/library/ast.html#ast.get_docstring)）與文件 frontmatter |
@@ -46,21 +46,45 @@ python "C:\AI\office-kit\tools\codex-autoupdate.py" --knowledge "C:\AI\work\know
 
 ## 派工、等待與狀態
 
-建議 Codex 與 Claude 都採用同一套交辦格式：目標、背景、範圍、完成標準及停止條件。交辦檔先存成 UTF-8，再送出。
+建議 Codex 與 Claude 都採用同一套交辦格式：目標、背景、範圍、完成標準及停止條件。交辦先存 UTF-8 的任務資料夾；程式只提供 Codex CLI 執行介面，不預設誰負責送出或驗收。
+
+採用時可由 AI 一次性執行 `python "<工具包>/tools/dispatch.py" --install "<專案>"`，部署根目錄的 `dispatch.py` 及 `.ai-office/tools/` 相依程式。既有不同內容備份為 `.bak-時間`；不設排程或改登入。任務範本另存 `tasks/_template/`，由 AI 複製、改名及填妥。
+
+任務位置為 `tasks/合約欄位整理/brief.md` 與 `task.json`。這是參考 [npm scripts](https://docs.npmjs.com/cli/v11/using-npm/scripts/) 將可讀名稱對應設定的慣例；本工具包用 Python＋JSON，不需要安裝 npm 才能派工。下列短命令在專案根目錄執行，背景面板只需顯示任務名稱：
 
 ```powershell
-python "C:\AI\office-kit\tools\codex-run.py" submit --brief "C:\AI\work\brief.md" --cwd "C:\AI\work" --out "C:\AI\work\inbox\codex\task-01" --model gpt-6.1-sol --effort high
-python "C:\AI\office-kit\tools\codex-run.py" status "C:\AI\work\inbox\codex\task-01"
-python "C:\AI\office-kit\tools\dispatch-status.py" "C:\AI\work\inbox\codex" --json
+python dispatch.py 合約欄位整理
+python dispatch.py 合約欄位整理 --status
+python dispatch.py --list
 ```
 
-`submit` 啟動獨立 worker，回傳一行 JSON；`ok:true` 表示已確認啟動，工作可能尚未完成。輸出目錄必須尚不存在；重送請先查狀態，不覆寫既有任務。`wait <輸出目錄> --timeout 120` 會阻塞最多 120 分鐘，逾時回傳結束碼 2，工作繼續；建議由 AI 工具的 `run_in_background: true` 執行等待，或在獨立終端等待，以維持目前對話可用。`status` 不等待。
+預設短指令派出獨立 worker，回傳一行 JSON；`ok:true` 是確認啟動，背景面板中的送出命令結束不代表工作完成。預設輸出 `inbox/codex/合約欄位整理/` 必須不存在；新的交辦用新名稱，既有工作先查狀態，不覆寫。單次 `--status` 不等待，`--list` 列全專案總覽。
+
+需要等待時短指令為 `python dispatch.py 合約欄位整理 --wait`，timeout 從 task.json 讀分鐘數；逾時結束碼為 2，worker 繼續。Claude 可用工具背景執行功能；Codex hook 的 Bash 輸入不含背景參數，會攔等待，建議單次查狀態或在獨立終端等待。兩端差異與官方依據見 [開場說明](../hooks/README-session-start.md)。
+
+~~~json
+{
+  "version": 1,
+  "cwd": ".",
+  "model": null,
+  "effort": "high",
+  "sandbox": "read-only",
+  "search": false,
+  "codex_home": null,
+  "memory_max": null,
+  "min_free": null,
+  "max_wait": 60,
+  "timeout": 120
+}
+~~~
+
+`cwd`、選用 `out` 及 `codex_home` 的相對路徑以專案根目錄解析；`codex_home` 是已核准的登入資料目錄，不填帳密或權杖。模型 null 沿用 CLI，強度須為模型支援值。sandbox 預設 workspace-write，可設 read-only；search 是是否公開網路查詢。設定未知欄位或格式錯誤會停止，採用前建議核對 [任務範本](../templates/tasks/合約欄位整理/task.json)。
 
 每份工作包含 `brief.md`、實際送出的 `prompt.txt`、`job.json`、`events.jsonl`、`stderr.log`、`worker.log`、`result.md` 與 `summary.json`。摘要記錄指定模型／強度（未指定時為 null，沿用 CLI 設定）、thread、token 用量、時間、結束碼及錯誤；不宣稱已驗證 AI 在回覆中提及的其他交付物。中間檔放 `scratch/`，本精簡版保留供核對，清理可由您與 AI 在驗收後決定。
 
-派工預設 `workspace-write`，輸出目錄列為可寫範圍；可選 `--sandbox read-only` 做只讀審查，最後回覆由 CLI 保存。背景執行不能互動核准，因此固定使用 `approval_policy="never"`；需要核准的動作會遭拒，請依錯誤交回使用者，不自行擴大權限。`--codex-home` 可指定已核准的登入資料目錄，程式不自動換帳號、不自動重試失敗任務。
+派工預設 workspace-write，輸出目錄列為可寫範圍；task.json 可選 read-only，最後回覆由 CLI 保存。背景執行不能互動核准，固定 `approval_policy="never"`；需核准的動作會遭拒，請依錯誤交回，不自行擴大權限。程式不自動換帳號或重試失敗任務，設定快照保存為 task-settings.json。
 
-若需記憶體限制，可在 Windows 加 `--memory-max 2G`；採 [Job Object](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects) 限制 worker 及子行程合計的 committed memory，並非實體 RAM 的 RSS。受限時配置記憶體可能失敗，摘要不會將所有非零結束碼誤稱 OOM。其他平台請省略此選項。需要先等資源可用才派出時，可用 `codex-queue.py --min-free 3G --max-wait 60` 加上相同的 submit 參數；它會等待資源並等待工作完成，亦建議背景執行。
+若需記憶體限制，Windows 可在 task.json 設 `memory_max: "2G"`；採 [Job Object](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects) 限制 worker 及子行程合計 committed memory，並非實體 RAM 的 RSS。受限時可能配置失敗，摘要不將所有非零結束碼誤稱 OOM；其他平台設 null。先等資源可用可設 `min_free: "3G"` 及 max_wait 分鐘，等待在獨立 worker 中進行，送出命令不等資源；狀態會顯示 queued，逾時保存失敗摘要且未啟動 Codex。兩端都用同一短命令。
 
 ## 官方文件下載
 

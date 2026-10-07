@@ -40,45 +40,29 @@ codex login status
 
 第二意見建議先請對方獨立分析問題，再提供自己的方案供比較；交辦不要預先指定想得到的結論。
 
-## 送出、等待與收回
+## 任務資料夾與短指令
+
+派工前請完整載入本工具包 handoff-docs，將交辦存入 `tasks/合約欄位整理/brief.md`，帳號目錄、模型、強度、sandbox、網路與記憶體選項存入同資料夾的 `task.json`。設定範本與一次性部署方式見 [工具說明](../../tools/README-ai-management.md)；派工入口與相依工具部署到專案後，從根目錄執行：
 
 ```powershell
-python "${CLAUDE_PLUGIN_ROOT}/tools/codex-run.py" submit `
-  --brief "<工作資料夾>/brief.md" --cwd "<工作資料夾>" `
-  --out "<工作資料夾>/inbox/codex/task-01" --model gpt-6.1-sol --effort high
+python dispatch.py 合約欄位整理
+python dispatch.py 合約欄位整理 --status
+python dispatch.py --list
 ```
 
-輸出目錄須尚不存在，由程式建立。建議記下 JSON 的 `id`；只有 `ok:true` 才表示已確認啟動。未確認時先查 `status`，不立刻重送。
+背景任務面板只需顯示短命令。第一條派出獨立 worker，`ok:true` 表示確認啟動，送出命令結束不代表完成；輸出預設在 `inbox/codex/合約欄位整理/`。既有紀錄保留，新的交辦請用新名稱；未確認啟動先查狀態，不立刻重送。
+
+如需等待，指令仍用任務名稱：
 
 ```powershell
-python "${CLAUDE_PLUGIN_ROOT}/tools/codex-run.py" status "<工作資料夾>/inbox/codex/task-01"
-python "${CLAUDE_PLUGIN_ROOT}/tools/dispatch-status.py" "<工作資料夾>/inbox/codex" --json
+python dispatch.py 合約欄位整理 --wait
 ```
 
-需要等待完成時，建議用 AI 工具的背景執行功能（`run_in_background: true`）執行：
+等待分鐘數由 task.json 的 timeout 讀取；逾時為結束碼 2，worker 繼續。Claude 可用工具的背景執行功能（run_in_background）；Codex 的 Bash hook 只收到 command，無法分辨背景 yield，建議用單次 --status 或在獨立終端等待。前景等待與 sleep 輪詢受防護 hook 檢查，依據及機制見 [開場說明](../../hooks/README-session-start.md)。
 
-```powershell
-python "${CLAUDE_PLUGIN_ROOT}/tools/codex-run.py" wait "<工作資料夾>/inbox/codex/task-01" --timeout 120
-```
+完成後請讀 summary.json 與 result.md，核對交付物及完成標準；`ok:true` 只表示 CLI 成功及回覆存在，不能取代驗收。事件與錯誤在 events.jsonl、stderr.log；設定快照是 task-settings.json。
 
-若目前介面沒有背景執行功能，可在獨立終端等待。前景等待與 sleep 輪詢會由 `block_dangerous.py` 攔截，讓使用者仍能在目前對話提出新資訊。等待逾時結束碼為 2，工作繼續；可稍後查狀態。
-
-完成後建議讀 `summary.json` 與 `result.md`，核對交付物和完成標準；摘要的 `ok:true` 只表示 CLI 成功及最後回覆存在，不能取代文件或程式驗收。事件與錯誤保留於 `events.jsonl`、`stderr.log`；資料缺漏時如實回報。
-
-## 選用參數
-
-| 參數 | 用途 |
-|---|---|
-| `--model`、`--effort` | 指定模型與其支援強度；不指定則沿用 CLI 設定 |
-| `--search` | 交辦需查公開網路資料時選用 |
-| `--sandbox read-only` | 只讀分析；最後回覆由 CLI 保存 |
-| `--sandbox workspace-write` | 預設；寫入工作區及明列的輸出目錄 |
-| `--codex-home` | 使用已核准的帳號目錄；不自動切換帳號 |
-| `--memory-max 2G` | Windows 選用的 worker 與子行程合計 committed memory 上限 |
-
-背景任務使用 `approval_policy="never"`，需要互動核准的動作會失敗；請交回實際錯誤，不改用繞過核准的旗標。本版不自動接續或重試失敗任務，可用新交辦引用先前紀錄與已完成產出。
-
-如需先等記憶體達門檻再派出，可背景執行 `codex-queue.py --min-free 3G --max-wait 60` 加相同派工參數。`dispatch-status.py` 或開場 hook 可盤點執行中及需要處理的工作；不以短間隔輪詢取代背景等待。
+模型、effort、sandbox、codex_home、search、memory_max、min_free、max_wait 都由任務 JSON 設定，不加到背景命令。read-only 供只讀分析；workspace-write 允許工作區及輸出目錄。背景固定 approval_policy=never，需互動核准的動作會失敗，請交回實際錯誤，不擴大權限。Windows 記憶體上限選用，其他平台設 null；不自動接續、重試或切換帳號。
 
 ## 編碼、資料與驗收
 

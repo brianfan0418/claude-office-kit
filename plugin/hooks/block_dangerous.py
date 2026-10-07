@@ -15,6 +15,7 @@ exit 0 並在 stdout 輸出 hookSpecificOutput.permissionDecision（deny 或 ask
 只用 Python 標準庫。
 """
 import json
+import argparse
 import re
 import sys
 
@@ -48,7 +49,8 @@ GIT_FORCE_PUSH = re.compile(
 GIT_RESET_HARD = re.compile(r"\bgit\b[^\n]*?\breset\b[^\n]*?\s--hard\b", re.I)
 
 # 受保護的設定：settings.json（含 settings.local.json）與 hooks 資料夾
-PROTECTED = r"\.claude[/\\](?:settings(?:\.local)?\.json(?![\w.-])|hooks(?:[/\\]|(?![\w.-])))"
+PROTECTED = (r"(?:\.claude[/\\](?:settings(?:\.local)?\.json(?![\w.-])|hooks(?:[/\\]|(?![\w.-])))"
+             r"|\.codex[/\\](?:config\.toml(?![\w.-])|hooks\.json(?![\w.-])|hooks(?:[/\\]|(?![\w.-]))))")
 PROTECTED_RE = re.compile(PROTECTED, re.I)
 REDIRECT_TO_PROTECTED = re.compile(r">>?\s*[\"']?[^\s\"'|;&]*" + PROTECTED, re.I)
 COPY_VERBS = re.compile(r"^\s*(?:cp|copy|copy-item|xcopy|robocopy)\b", re.I)
@@ -60,7 +62,7 @@ WRITE_VERBS = re.compile(
 )
 
 REASON_SELF = (
-    "這會修改約束 Claude 行為的設定（.claude/settings.json 或 hooks）。"
+    "這會修改約束 AI 行為的設定（.claude 或 .codex 的設定及 hooks）。"
     "請先向使用者說明要改什麼與原因，取得同意後，由使用者在畫面上確認 Edit 工具的變更；不要用指令繞過。"
 )
 
@@ -68,27 +70,36 @@ FG_WAIT = re.compile(
     r"\bcodex-run\.py\s+wait\b|\bcodex-queue\.py\s+--"
     r"|\b(?:for|while|until)\b.*?\bdo\b.*?\bsleep\s+\d"
     r"|\b(?:while|foreach|for)\s*\(.*?\).*?\bStart-Sleep\b", re.I | re.S)
+DISPATCH_WAIT = re.compile(r"\bdispatch\.py\b", re.I)
 
 
-def foreground_wait(command, background=False):
-    """忽略 heredoc／here-string 與文字參數；保留引號中的工具路徑。"""
-    if background:
-        return False
+def command_view(command):
+    """移除文字資料，保留已知工具名稱以檢查實際執行段。"""
     view = re.sub(r"(<<-?\s*(['\"]?)(\w+)\2[^\n]*)\n.*?\n\s*\3[ \t]*(?=\n|$)", r"\1", command, flags=re.S)
     view = re.sub(r"(?ms)@(['\"])\r?\n.*?^\1@", " ", view)
 
     def quoted(match):
         value = match.group(2)
         # Windows 常以引號包工具的完整路徑，這仍是要執行的指令。
-        if re.fullmatch(r"[^\r\n]*[/\\]codex-(?:run|queue)\.py", value, re.I) or value in ("codex-run.py", "codex-queue.py"):
+        if re.fullmatch(r"[^\r\n]*[/\\](?:codex-(?:run|queue)|dispatch)\.py", value, re.I) or value in ("codex-run.py", "codex-queue.py", "dispatch.py"):
             return " " + re.split(r"[/\\]", value)[-1] + " "
         return " "
 
     view = re.sub(r"(['\"])(.*?)(?<!\\)\1", quoted, view, flags=re.S)
+    return view
+
+
+def foreground_wait(command, background=False):
+    """忽略 heredoc／here-string 與文字參數；保留引號中的工具路徑。"""
+    if background:
+        return False
+    view = command_view(command)
     # help 只顯示用法，沒有等待。
     view = "\n".join(part for part in re.split(r"&&|\|\||[;\n]", view)
                      if not re.search(r"\s--help\b", part))
-    return bool(FG_WAIT.search(view))
+    short_wait = any(DISPATCH_WAIT.search(part) and re.search(r"\s--wait\b", part)
+                     for part in view.splitlines())
+    return bool(FG_WAIT.search(view)) or short_wait
 
 
 def writes_protected(command):
@@ -125,29 +136,39 @@ def check_command(command):
     return None
 
 
-def evaluate(data):
+def evaluate(data, platform="claude"):
     """回傳 (decision, reason)；放行回傳 None。"""
     tool = data.get("tool_name", "")
     tool_input = data.get("tool_input") or {}
-    if tool in ("Bash", "PowerShell"):
-        if foreground_wait(tool_input.get("command") or "", tool_input.get("run_in_background", False)):
-            return ("deny", "已攔截：前景等待派工或輪詢。建議用工具的背景執行功能（run_in_background: true）等待 codex-run.py；查單次進度可用 status。PowerShell 可在獨立終端等待，讓目前對話保持可用。")
-        reason = check_command(tool_input.get("command") or "")
+    if tool in ("Bash", "PowerShell", "exec_command"):
+        command = tool_input.get("command") or tool_input.get("cmd") or ""
+        background = tool_input.get("run_in_background", False)
+        if foreground_wait(command, background):
+            return ("deny", "已攔截：前景等待派工或輪詢。python dispatch.py 任務名稱會派出獨立 worker；查單次進度加 --status。Claude 等待可用 run_in_background；Codex hook 收不到背景參數，建議用 --status 或在獨立終端等待。")
+        reason = check_command(command)
         return ("deny", reason) if reason else None
     if tool in ("Edit", "Write", "MultiEdit"):
         path = str(tool_input.get("file_path") or "").replace("\\", "/")
         if PROTECTED_RE.search(path.replace("/", "\\")) or PROTECTED_RE.search(path):
-            return ("ask", REASON_SELF)
+            return ("deny" if platform == "codex" else "ask", REASON_SELF)
+    if tool == "apply_patch":
+        paths = re.findall(r"^\*\*\* (?:Add File|Update File|Delete File|Move to): (.+)$",
+                           tool_input.get("command") or "", re.M)
+        if any(PROTECTED_RE.search(path) for path in paths):
+            return ("deny", REASON_SELF)
     return None
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--platform", choices=("claude", "codex"), default="claude")
+    args = parser.parse_args()
     try:
         raw = sys.stdin.buffer.read().decode("utf-8-sig", errors="replace")
         data = json.loads(raw) if raw.strip() else {}
     except (OSError, ValueError):
         return 0
-    verdict = evaluate(data)
+    verdict = evaluate(data, args.platform)
     if verdict is None:
         return 0
     decision, reason = verdict

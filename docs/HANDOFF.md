@@ -1,46 +1,45 @@
 # 交接
 
-最後更新：2026-10-07（K1）
+最後更新：2026-10-07（K1b）
 
-## 現況與決定
+## 現況
 
-本 repo 是供使用者與 Codex／Claude 逐項選用的通用 AI 工作資源，不預設整套安裝或建立排程。交付環境預設不用 Git；AI 可選用 Git 追蹤自身修改。本開發 repo 維持 commit 與 push。
+本 repo 提供使用者與 Codex／Claude 逐項選用的 AI 工作資源，交付環境預設不用 Git，也不替對方安裝或設排程。本開發 repo 維持 commit 與 push。K1 的模型、額度、更新、官方文件下載、派工、文件落差與登記表已加入；K1b 補齊必讀清單、寫法 gate 及中文短派工。
 
-- 合約資源已拆至獨立的 `claude-contract-kit`；請沿用取得該工具包的位置。本輪去識別檢查要求僅保留本 repo 的識別網址，故其他 repo 的作者網址改為資源名稱與檔案位置。
-- `README.md`、`GUIDE-FOR-CLAUDE.md` 使用建議語氣，列 Claude Code／Cowork 的使用與未驗證範圍；Codex 與 Claude 均可協助選用、執行及驗收。
-- 公司核准的企業版 Claude／Codex 派工不視為對外行為；寄信、提交表單及公開發布仍依使用者工作規則處理。
-- 原始資源在 `skills/`、`hooks/`、`tools/`、`knowledge/`；`plugin/` 是 `tools/build_plugin.py` 產生的副本，直接修改會被重建覆寫。外掛名為 `office-work-kit`，本版為 0.2.0。
+- 原始資源在 skills、hooks、tools、knowledge、templates；plugin 是 build_plugin.py 產生的 0.3.0 外掛副本，維護原始檔後重建。
+- Codex 與 Claude 均可選用、派工與驗收；企業版之間派工不視為對外行為，寄信、表單、付款及發布仍依使用者授權處理。
+- 工具只用標準函式庫；既有轉檔與 Outlook 的選用依賴仍依各自說明。私人文件、帳號資料及下載原檔不納入公開 repo。
 
-## K1 資源與參考依據
+## K1b 決定與依據
 
-各項官方網址與操作說明集中於 `tools/README-ai-management.md`。以下本機實作均只參考行為，再改寫為去識別、標準函式庫與 Windows 路徑版本，不保留其帳號、服務或排程。
+各項官方來源、平台差異與採用方式集中於 [開場說明](../hooks/README-session-start.md) 及 [工作管理工具說明](../tools/README-ai-management.md)。
 
-| 項目 | 本機參考 | 公開版本與決定 |
+| 項目 | 本機參考／官方依據 | 公開決定 |
 |---|---|---|
-| 模型知識 | codex-cli.md 的模型／額度／派工節、CLI 0.160.1 models_cache.json | knowledge/codex-models.md，日期及可見模型快照；CLI 預設強度與 API 分開說明 |
-| 額度 | codex-quota.py、claude-quota.py | 同名工具：Codex 用官方 App Server；Claude 改用官方入口與限制說明，不呼叫非公開 OAuth 端點 |
-| CLI 更新 | codex-autoupdate.py | 同名工具：npm 新版升級、短回覆實測、回退核對；清單變動更新知識與 INDEX、UTF-8 收件匣通知；不改預設模型 |
-| 官方文件 | official-docs-fetch.py | 同名工具：四組官方索引、一頁一檔及 manifest；Claude Code 失效轉址可由官方 llms-full.txt 分頁備援 |
-| 派工與總覽 | codex-run.py、codex-queue.py、dispatch-status.py | 同名精簡工具：背景 worker、wait/status、結果與摘要；不用 systemd，Windows Job Object 限制選用 |
-| 文件落差 | doc-audit.py | 同名工具：mtime、登記表內容與本機連結；Git 由 --git 啟用；時間只作待核對線索 |
-| 登記表 | registry.py | 同名工具：工具 docstring 與單行 frontmatter 產生 REGISTRY／INDEX；外掛表只列實際封裝工具 |
-| Hooks | block-dangerous.py 的 FG_WAIT、session-brief.py | block_dangerous.py 去除文字／heredoc 再攔前景等待；session_start.py 有事項才附狀態與落差摘要，同 session 抑制重複 |
+| 必讀清單 | round_start.py 的 MUST_READ＋理由、定案逐條列出、HANDOFF 指定章節原文、工作線 | docs/session-start.json；path、reason、full／section／path；由專案 AI 維護；hook 只讀取與檢查 |
+| 原生開場 | Claude SessionStart／additionalContext／@path；Codex hooks 與 AGENTS.md 官方文件 | 同一 Python hook、startup／resume／clear／compact；原生指示檔放固定規則，清單處理章節與檢查 |
+| 長度／缺檔 | round_start.py 缺檔結束碼；官方 SessionStart 的事件行為 | context 預設 24000 字元；超量改列路徑、不截條文；缺檔明示；手動 --text --check 非零，hook 回傳有效 context |
+| 登記表 | 既有 registry.py／REGISTRY.md | 開場每支工具一行用途；寫新腳本前先查，已有的直接使用；不另建產生器 |
+| 寫法 gate | skill-gate.py 的用途分類；兩端官方 PreToolUse／PostToolUse | 規則／skill／派工查 handoff-docs，專案文件加 project-docs；成功載入後放行，壓縮後重讀；不解析不穩定 transcript |
+| 短派工 | 既有 codex-run.py／queue；npm scripts 將名稱與設定分離的官方慣例 | tasks/中文名稱/brief.md＋task.json；根目錄 python dispatch.py 中文名稱；帳號、模型、強度及權限留設定檔 |
+| 前景等待 | 既有 FG_WAIT；Codex 官方 unified exec handler 的 hook 輸入 | 短指令派出獨立 worker 後回傳；資源等待在 worker、狀態 queued；Codex 用 --status，Claude 可背景 --wait |
+| 外掛同步 | 既有 build_plugin.py 與官方外掛格式 | 附三個 hooks、共用狀態、兩端設定、必讀與任務範本；52 個檔案 |
 
-新工具的共用依賴為 `office_common.py`、`codex_rpc.py`、`win_memory.py`；選擇部分工具時見採用指南。工具本身不建立 Windows 排程，指南提供選用操作步驟。
+本機來源只參考行為，沒有複製專案名稱、條文、帳號、服務或私人路徑。K1 基礎工具的各項來源仍見工具說明與程式檔頭；模型清單以更新程式維護，不更改預設模型或切換帳號。
 
 ## 已完成驗證
 
-- Linux：hooks 18 tests、tools 88 tests 通過，無略過；tools 的一次性環境含 markitdown[docx,pdf]、python-docx、reportlab，包含真實 DOCX／PDF 轉換。Windows Word／Outlook COM 仍使用假物件。
-- 新增測試含前景等待該擋／不該擋、開場摘要、背景派工／等待／重複輸出拒絕、UTF-8、查詢逾時、更新／回退／通知、下載失敗保留、文件落差與索引。
-- 真實 Codex App Server 模型與額度查詢通過；模型 refresh-only dry-run 通過。模型知識以同一更新程式從必要快取欄位產生；不匯出 identity 等額外欄位。
-- 四組官方來源共 554 頁全部取得，含 1 頁官方完整文字版備援；結果以派工交付物的驗證摘要保存，下載原檔在暫存目錄，不進公開 repo。
-- 外掛 40 個檔案副本核對及官方 `claude plugin validate plugin` 通過；完整命令輸出保存於本次派工交付物。Markdown 本機連結、登記表與去識別掃描於提交前核對。
+- Linux：hooks 37 tests、tools 95 tests，共 132 通過，無略過；一次性測試環境含既有轉檔的 markitdown[docx,pdf]、python-docx、reportlab，含真實 DOCX／PDF 轉換。
+- 新增測試含清單全文／章節／路徑、無清單提示同 session 一次、缺檔／章節／格式、超量、不截斷定案、四個開場來源重載、總長含工具摘要、成功 skill 載入及壓縮失效。
+- 派工測試含中文任務資料夾、根目錄短入口、設定驗證／傳遞、worker 回覆與摘要、既有結果保留、queued 狀態及資源逾時未啟動 CLI；CLI 執行以替身測試。
+- 外掛 52 檔副本核對與官方 claude plugin validate plugin 通過。登記表、知識索引、Markdown 本機連結與去識別於提交前核對；去識別只保留本 repo 的網址。
+- K1 已核對真實 App Server 模型／額度與官方文件下載；本輪沿用其實作及回歸測試，不升級維護者 CLI 或替對方設定排程。
 
-## 未驗證與接續動作
+## 未驗證與第一個接續動作
 
-第一個可執行動作：在目標 Windows 用虛構交辦驗證已選工具的 submit → wait → result／summary，再重開所選 AI 介面確認 hook 的實際觸發。
+第一個動作：在目標 Windows 用虛構專案部署入口，填一份中文任務；送出後查 --status、result.md 及 summary.json，再於所選介面重開、恢復與壓縮，核對必讀原文及 gate。
 
-1. Windows npm／Node 入口、分離 worker、Job Object、PowerShell 及工作排程器尚未在實機驗證；升級安裝與回退採替身測試，本輪不升級維護者正在使用的 CLI。
-2. Cowork 的主機 CLI／企業登入、Python hook matcher、工作目錄、Outlook COM、OCR／GPU 整合未驗證。官方結構驗證通過不表示上述整合已生效。
-3. Claude 企業的即時剩餘訂閱額度公開 API 未查得；企業 Analytics API 是延遲用量／成本資料，不能當作即時餘額。本工具只提供官方可用入口，不要求管理員憑證。
-4. `mtime` 可能因複製或封裝變動而提示落差，建議人工核對內容；Git 缺少不影響其他檢查。無 hook 提示亦不表示所有檢查通過，直接執行工具可核對結果。
+1. Windows npm／Node 入口、分離行程、Job Object、PowerShell 與工作排程器未在實機驗證。
+2. Claude／Codex 的本程式 hook 真實介面注入、Codex 信任流程與 Cowork 的 Python／工具 matcher／工作目錄尚未端到端實測；官方機制已查證，JSON 假輸入與安裝器以暫存資料夾驗證。
+3. gate 涵蓋官方所列工具與常見 shell 寫檔，無法解析任意程式全部副作用；hook 未採用、未信任或逾時不能當作生效。SessionStart 注入不等於保證 AI 遵守所有原文。
+4. mtime 只作待核對線索；Claude 企業的即時剩餘額度公開 API 未查得，保持未知。既有 Windows Outlook COM、OCR／GPU 與 Cowork 主機 CLI 登入亦未實測。

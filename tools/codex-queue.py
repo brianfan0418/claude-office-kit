@@ -1,6 +1,6 @@
 """選用的資源等待派工：可用記憶體達門檻後送出並等待結果。
 
-用法：python tools/codex-queue.py --min-free 2G [--max-wait 60] --brief FILE --out DIR [其他 submit 選項]
+用法：python dispatch.py 任務名稱；資源門檻寫在 task.json 的 min_free／max_wait。
 建議由 AI 的背景執行功能啟動；不使用 systemd 或自動設定排程。
 """
 import argparse
