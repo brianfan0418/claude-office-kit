@@ -1,10 +1,10 @@
 # 交接
 
-最後更新：2026-10-07 09:53（台灣時間）
+最後更新：2026-10-07 B14（台灣時間）
 
 ## 現況
 
-本 repo 為逐項選用的通用工作資源目錄；合約工具位於 [claude-contract-kit](https://github.com/brianfan0418/claude-contract-kit)。本輪只建立本機 commit，不 push。
+本 repo 為逐項選用的通用工作資源目錄；合約工具位於 [claude-contract-kit](https://github.com/brianfan0418/claude-contract-kit)。B14 的採用建議文件由 Codex commit 並 push。
 
 ## 完成項目與決定
 
@@ -35,3 +35,9 @@ claude plugin validate plugin                Validation passed
 1. 在目標 Windows 或 Cowork，以虛構檔案依指南逐項驗證選定資源。官方已確認 Cowork 支援 skills 與 hooks，但本套 Python hooks 的 matcher、工作目錄、Python 指令及實際觸發未驗證。
 2. Cowork 讀取主機 Codex CLI／企業登入、Outlook COM、OCR 工具與 GPU 的整合未查證；指南不能當成主機程式已可使用的證據。
 3. Windows 真實 Word／Outlook、工作排程器與桌面版外掛上傳尚未實測；需要時由使用者選定環境與資源後測試。
+
+## B14：採用指南語氣
+
+GUIDE-FOR-CLAUDE.md 及 README 改為供您與您的 AI 參考的建議語氣，盤點、資源選擇、封裝及驗證步驟維持具體。既有同意範圍與對外動作限制保留；不預設整套安裝。Git 維持選用，Codex 與 Claude 均可協助。
+
+文件變更驗證：hooks 10 tests 通過；tools 51 tests 通過，其中 1 項依既有 Windows COM 條件跳過；外掛 --check 24 檔一致。Windows Cowork、Word COM 與 Outlook 實機限制仍依既有驗證節。

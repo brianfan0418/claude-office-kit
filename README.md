@@ -1,8 +1,8 @@
 # claude-office-kit
 
-供 Claude 與使用者逐項選用的 AI 工作資源目錄，包含規則範本、skills、hooks、文件轉檔、Codex 派工與 Outlook 監看。取得本 repo 不代表同意安裝全部資源。
+供您與您的 AI 逐項選用的 AI 工作資源目錄，包含規則範本、skills、hooks、文件轉檔、Codex 派工與 Outlook 監看。取得本 repo 不代表同意安裝全部資源。
 
-先請 Claude 讀 [GUIDE-FOR-CLAUDE.md](GUIDE-FOR-CLAUDE.md)，了解工作內容、Claude Code 或桌面版 Cowork、既有工具與設定，再提出採用建議，由使用者逐項決定。既有規則與流程先比對，避免重複安裝。
+建議由您的 AI 讀取 [GUIDE-FOR-CLAUDE.md](GUIDE-FOR-CLAUDE.md)，了解工作內容、Claude Code 或桌面版 Cowork、既有工具與設定，再提出採用建議，由您逐項選擇。既有規則與流程建議先比對，避免重複安裝。
 
 ## 資源與適用情境
 
@@ -23,7 +23,7 @@
 | [plugin/](plugin/) | 依官方結構封裝 skills、hooks 與所需工具 | 在 Cowork 使用選定資源；安裝前依指南裁減未採用項目 |
 | [build_plugin.py](tools/build_plugin.py) | 從原始檔重建外掛副本 | 維護或封裝外掛，避免副本與原始檔不同步 |
 
-每項資源的「Claude Code 用法」與「Claude 桌面版 Cowork 用法」均列於[指南](GUIDE-FOR-CLAUDE.md)。Python、Git、Codex、OCR 與 Outlook 只在所選資源需要時檢查，缺少時先說明用途，由使用者決定是否安裝。
+每項資源的「Claude Code 用法」與「Claude 桌面版 Cowork 用法」均列於[指南](GUIDE-FOR-CLAUDE.md)。Python、Git、Codex、OCR 與 Outlook 只在所選資源需要時檢查，如需新增執行環境，建議先說明用途供您選擇。
 
 ## 合約資源
 
@@ -31,7 +31,7 @@
 
 ## 驗證
 
-在本 repo 根目錄執行：
+如需驗證，可由您的 AI 在本 repo 根目錄執行：
 
 ```text
 python3 -m unittest discover -s hooks
