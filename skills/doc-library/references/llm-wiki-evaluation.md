@@ -2,7 +2,7 @@
 
 ## 來源與日期
 
-- 評估對象：Andrej Karpathy 的「LLM Wiki」構想文，https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f 。2026-10-07 以 `curl` 讀取全文。交辦說明發表於 2026-04；gist 原文內容未載日期，發表日期未另行查證。
+- 評估對象：Andrej Karpathy 的「LLM Wiki」構想文，https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f 。2026-10-07 查閱 [gist 官方頁面](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)，頁首建立日期為 2026-04-04；此日期為 gist 建立日期。
 - 原文自述為「刻意抽象」的構想文，所有元件「皆為選用、可模組化」。本評估對象是構想本身，不是任何特定實作。
 - 以下「原文」指該構想文；標「推論」者為本評估的判斷，不是原文或實測結果。
 

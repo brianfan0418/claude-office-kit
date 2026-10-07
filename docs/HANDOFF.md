@@ -1,6 +1,6 @@
 # 交接
 
-最後更新：2026-10-07 06:59（台灣時間）
+最後更新：2026-10-07 09:53（台灣時間）
 
 ## 現況
 
@@ -15,6 +15,9 @@
 - 外掛安裝前在封裝副本裁減未採用的資源，不預設全部安裝。外掛結構與封裝依據集中於採用指南，維護原始資源後重建副本。
 
 ## 已完成驗證
+
+2026-10-07 B11：依 [gist 官方頁面](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) 頁首核對 LLM Wiki 構想文建立日期為 2026-04-04，更新評估原檔並以 build_plugin.py 重建副本。兩份日期來源一致。hooks 10 tests、tools 51 tests 全過且無略過；tools 在一次性虛擬環境安裝 markitdown[docx,pdf]、python-docx、reportlab 後包含真實 DOCX／PDF 轉換。外掛 24 個副本核對及 plugin validate 通過；驗收指定去識別規則排除 .git 後零命中。未修改辦公工具程式；本機 commit 由使用者 push。
+
 
 ```text
 python3 -m unittest discover -s hooks         10 tests，OK
