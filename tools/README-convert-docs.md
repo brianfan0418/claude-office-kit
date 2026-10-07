@@ -1,6 +1,6 @@
 # convert_docs.py：把 Word、PDF、Excel、PowerPoint 轉成帶 metadata 的 Markdown
 
-本工具讀取一個資料夾（含子資料夾），為每份文件產生一份 Markdown 衍生檔，供 Claude 閱讀與查詢。原檔只讀不改；衍生檔可隨時刪除重產，唯一依據永遠是原檔。
+本工具讀取一個資料夾（含子資料夾），為每份文件產生一份 Markdown 衍生檔，供 AI（Codex、Claude 皆可）閱讀與查詢。原檔只讀不改；衍生檔可隨時刪除重產，唯一依據永遠是原檔。
 
 ## 它做什麼
 

@@ -39,6 +39,8 @@ codex login status
 - Codex 使用使用者的 ChatGPT 訂閱額度，額度不足時會回報錯誤；此時改由本對話或 subagent 做。
 - Codex 在 Windows 的沙箱行為與 Linux 不同（官方文件另有 Windows 專節），未在 Windows 實測；第一次先派一個小任務確認它能讀寫檔案。
 
+預設可在一般非 Git 資料夾執行；AI 若需追蹤自身修改可選用 Git。
+
 ## 派工流程
 
 1. 寫交辦檔，存成 `<工作資料夾>\inbox\codex\<任務名>\brief.md`（格式見下節）。
@@ -47,7 +49,7 @@ codex login status
 
 ```powershell
 $task = "$env:USERPROFILE\AI工作區\inbox\codex\<任務名>"
-codex exec -C "<專案資料夾>" -s workspace-write `
+codex exec --skip-git-repo-check -C "<工作資料夾>" -s workspace-write `
   -o "$task\out\final-message.md" `
   "請完整讀取 $task\brief.md，照裡面的要求執行。交付物寫到 $task\out\，最後的回報寫成三段：做了什麼、證據、沒做或不確定的。"
 ```
@@ -71,7 +73,7 @@ Get-Content "$task\out\final-message.md"
 | `-c model_reasoning_effort=high` | 提高推理強度；判斷類工作（審查、查證）用，機械性工作維持預設 |
 | `--search`（放在 `exec` 之前：`codex --search exec ...`） | 允許上網搜尋；只有交辦需要查網路資料時才加 |
 | `--json` | 事件流以 JSON 逐行輸出，除錯用 |
-| `--skip-git-repo-check` | 工作根目錄不是 git 資料夾時才需要；工作資料夾應已納入 git，一般用不到 |
+| `--skip-git-repo-check` | 預設工作資料夾不需要 Git；範例均使用此旗標。AI 若需追蹤自身修改可選用 Git |
 
 不加 `-s` 時沿用使用者的 Codex 設定；要寫檔就明確傳 `-s workspace-write`，避免預設值不同造成「做完卻沒改到檔案」。不使用 `--dangerously-bypass-approvals-and-sandbox`，除非使用者明確同意。
 
@@ -80,7 +82,7 @@ Get-Content "$task\out\final-message.md"
 超過幾分鐘的工作在背景執行，本對話繼續做別的事：用 Claude Code 的背景執行功能，或：
 
 ```powershell
-Start-Process -NoNewWindow -FilePath codex -ArgumentList @('exec','-C',$proj,'-s','workspace-write','-o',"$task\out\final-message.md",$prompt) `
+Start-Process -NoNewWindow -FilePath codex -ArgumentList @('exec','--skip-git-repo-check','-C',$proj,'-s','workspace-write','-o',"$task\out\final-message.md",$prompt) `
   -RedirectStandardOutput "$task\out\stdout.log" -RedirectStandardError "$task\out\stderr.log"
 ```
 
@@ -138,7 +140,7 @@ Codex 沒有本對話的記憶，也沒有你讀過的檔案。交辦檔包含�
 1. 逐項對照交辦的完成標準，看證據而不是看「已完成」的宣告。
 2. 關鍵事實自己抽查：打開產出的檔案、重跑它報告的測試指令。
 3. 回報「查無」「沒有」「無法判定」的，派另一個新的 Codex 或 subagent 回原始資料查證；這類陳述取決於查詢範圍是否正確，報告內看不出對錯。
-4. 有缺口時，用 `codex exec resume --last` 接續同一段對話只補缺的部分（`resume` 保留它的紀錄，不必重查），附上缺什麼。
+4. 如有缺口，建議用 `codex exec resume --last --skip-git-repo-check` 接續同一段對話，只補缺的部分，並附上缺項。
 5. 同一件事原樣重試不超過兩輪；第三次前換方法、換模型或換問題定義，仍失敗就回報使用者。
 
 ## 失敗時
@@ -147,6 +149,6 @@ Codex 沒有本對話的記憶，也沒有你讀過的檔案。交辦檔包含�
 |---|---|
 | 結束碼不是 0 | 讀 `stderr.log` 或終端輸出的最後 30 行，把原文貼給使用者，不摘要 |
 | 驗證失敗（401、未登入） | 停止，請使用者重新登入；不重複嘗試 |
-| 逾時、中斷、不確定有沒有改到檔案 | 不重複派工；先用 `git status` 與 `git diff` 查實際狀態，確認沒生效才重做 |
-| 改到不該改的檔案 | `git restore <檔案>` 還原，向使用者說明，修改交辦的限制後再派 |
+| 逾時、中斷、不確定有沒有改到檔案 | 不重複派工；先比對檔案、時間與輸出紀錄；有使用 Git 時亦可查 `git status` 與 `git diff`，確認沒生效才重做 |
+| 改到不該改的檔案 | 建議先比對備份並還原誤改內容，向使用者說明後調整交辦範圍；如 AI 選用 Git，亦可核對差異後還原指定檔案 |
 | 亂碼 | 見「中文與編碼」 |

@@ -1,6 +1,6 @@
 # 交接
 
-最後更新：2026-10-07 B14（台灣時間）
+最後更新：2026-10-07 B18（台灣時間）
 
 ## 現況
 
@@ -45,3 +45,9 @@ GUIDE-FOR-CLAUDE.md 及 README 改為供您與您的 AI 參考的建議語氣，
 ## B15：版本紀錄預設
 
 2026-10-07 使用者決定：交付環境預設不用 Git，文件版本與處理紀錄由系統負責；AI 若需追蹤自身修改可選用。templates、GUIDE、project-docs 與外掛副本同步取消 git init／commit 的預設要求；既有開發 repo 的維護規則仍沿用。驗證：hooks 10 tests、tools 51 tests（1 個 Windows COM 條件跳過）通過；外掛 --check 24 檔一致。
+
+## B18：非 Git 派工與 AI 平等
+
+Codex 派工預設使用一般資料夾，前景、背景及接續範例加入 `--skip-git-repo-check`；還原建議以檔案備份為準，Git 僅供 AI 選用。旗標已以本機 CLI help 核對。文件庫抽欄位、判讀、摘要與相關工具說明均適用 AI（Codex、Claude 皆可）；原檔唯讀及逐項原文核對規則保留，外掛副本由 build_plugin.py 同步。
+
+驗證：hooks 10 tests、tools 51 tests 全過且無略過（一次性環境含 markitdown[docx,pdf]、reportlab）；外掛 24 檔一致，官方 plugin validate 通過。Windows Word／Outlook COM 仍以假物件測試，Windows 實機限制維持。
