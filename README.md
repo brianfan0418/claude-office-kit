@@ -23,7 +23,7 @@
 | [plugin/](plugin/) | 依官方結構封裝 skills、hooks 與所需工具 | 在 Cowork 使用選定資源；安裝前依指南裁減未採用項目 |
 | [build_plugin.py](tools/build_plugin.py) | 從原始檔重建外掛副本 | 維護或封裝外掛，避免副本與原始檔不同步 |
 
-每項資源的「Claude Code 用法」與「Claude 桌面版 Cowork 用法」均列於[指南](GUIDE-FOR-CLAUDE.md)。Python、Git、Codex、OCR 與 Outlook 只在所選資源需要時檢查，如需新增執行環境，建議先說明用途供您選擇。
+每項資源的「Claude Code 用法」與「Claude 桌面版 Cowork 用法」均列於[指南](GUIDE-FOR-CLAUDE.md)。Python、Codex、OCR 與 Outlook 只在所選資源需要時檢查，如需新增執行環境，建議先說明用途供您選擇。
 
 ## 合約資源
 

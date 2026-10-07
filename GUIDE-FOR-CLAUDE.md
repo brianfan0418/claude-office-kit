@@ -24,7 +24,7 @@
 |---|---|---|
 | `templates/CLAUDE.md` | 建議依使用者工作填佔位；與既有專案或使用者 `CLAUDE.md` 合併，重開對話核對載入 | 建議由您的 AI 讀取範本，將已採用規則加入使用者核准的 Cowork 指示；自動載入 `CLAUDE.md` 的對等機制未查證，不能宣稱已生效 |
 | `handoff-docs` | 建議複製 skill；修改文件前載入，核對指示、證據與待決事項 | 建議選入外掛 `skills/handoff-docs/`；從 skills 清單選用，寫交接文件並檢查 |
-| `project-docs` | 建議複製 skill 與 templates；建立缺少的專案文件，沿用已有制度 | 建議選入外掛 `skills/project-docs/`；在授權資料夾建立文件，Git 僅在執行環境確實可用且已採用時使用 |
+| `project-docs` | 建議複製 skill 與 templates；建立缺少的專案文件，沿用已有制度 | 建議選入外掛 `skills/project-docs/`；在授權資料夾建立文件，預設不建立版本控制環境，沿用系統版本與處理紀錄 |
 | `evidence-discipline` | 建議複製 skill；產生引用表並核對原檔、頁碼／條號與逐字引句 | 建議選入外掛 `skills/evidence-discipline/`；提供原檔或授權資料夾，以同一引用表驗證；讀不到原檔就標示無法核對 |
 | `maker-checker` | 建議複製 skill；由不帶前情的新對話或 subagent 核對完成標準 | 建議選入外掛 `skills/maker-checker/`；另開 Cowork 任務，只提供原檔、產出與標準；本外掛未配置 agents，不宣稱已有自動驗收代理人 |
 | `codex-dispatch` | 建議複製 skill；檢查現有 Codex CLI 與登入，用虛構文件測試讀寫與回報落檔 | 建議選入外掛 `skills/codex-dispatch/`；僅在當前環境實際能執行 Codex CLI 時派工；Windows 主機 CLI 與企業登入能否由 Cowork 使用未查證，無法執行時改開獨立任務核對 |
@@ -66,3 +66,5 @@ manifest 位於 `.claude-plugin/`，skills 與 hooks 位於外掛根目錄。hoo
 ## 合約資源另行選擇
 
 需要合約登錄、比對或初審時，建議閱讀 [claude-contract-kit](https://github.com/brianfan0418/claude-contract-kit) 的 README，逐項決定採用該 repo 的 skills 與手冊。確認兩個 repo 的本機位置，各自使用根目錄路徑；合約資料放在私人工作資料夾。doc-library 只負責轉檔與查詢，轉檔完成不代表合約欄位已驗證。
+
+AI 若需追蹤自身修改可選用 Git。

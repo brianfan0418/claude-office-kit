@@ -41,3 +41,7 @@ claude plugin validate plugin                Validation passed
 GUIDE-FOR-CLAUDE.md 及 README 改為供您與您的 AI 參考的建議語氣，盤點、資源選擇、封裝及驗證步驟維持具體。既有同意範圍與對外動作限制保留；不預設整套安裝。Git 維持選用，Codex 與 Claude 均可協助。
 
 文件變更驗證：hooks 10 tests 通過；tools 51 tests 通過，其中 1 項依既有 Windows COM 條件跳過；外掛 --check 24 檔一致。Windows Cowork、Word COM 與 Outlook 實機限制仍依既有驗證節。
+
+## B15：版本紀錄預設
+
+2026-10-07 使用者決定：交付環境預設不用 Git，文件版本與處理紀錄由系統負責；AI 若需追蹤自身修改可選用。templates、GUIDE、project-docs 與外掛副本同步取消 git init／commit 的預設要求；既有開發 repo 的維護規則仍沿用。驗證：hooks 10 tests、tools 51 tests（1 個 Windows COM 條件跳過）通過；外掛 --check 24 檔一致。
