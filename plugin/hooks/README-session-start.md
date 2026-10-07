@@ -28,7 +28,7 @@
 
 一份清單至多 100 項、256 KB；單檔超過 2 MB 改列提醒。程式先替路徑與缺檔提示保留空間，全文或章節放不下就改列該路徑，不截斷條文。連路徑與理由都放不下時，列清單入口與問題數，建議縮短理由或調整上限後重讀。
 
-沒有清單時仍讀 HANDOFF 前 60 行與其餘待辦，並提示可以建立清單；相同 session 與專案只提示一次。必讀原文、工具登記表在 startup／resume／clear／compact 都重新載入；有事項的派工／文件落差摘要維持同 session 重複抑制。
+沒有清單時仍讀 HANDOFF 前 60 行與其餘待辦，並提示可以建立清單；相同 session 與專案只提示一次。必讀原文、工具登記表在 startup／resume／clear／compact 都重新載入；有事項的派工／文件落差摘要維持同 session 重複抑制。派工摘要同時查預設紀錄目錄與 tasks/*/task.json 指定的 out；自訂輸出只查該任務紀錄，設定無法核對時明示警示。
 
 工具摘要從專案 `tools/REGISTRY.md`、`scripts/REGISTRY.md`、派工部署的 `.ai-office/tools/REGISTRY.md` 及工具包登記表讀取，每支一行「檔名 — 用途」。超過總長上限時提示查閱入口；完整參數請查原表。專案 AI 寫新腳本前建議先查表，已有的直接使用。
 
@@ -59,6 +59,8 @@ python "<工具包>/hooks/session_start.py" --cwd "<專案>" --text --check
 python "<工具包>/hooks/install_hooks.py" --platform claude --dry-run
 python "<工具包>/hooks/install_hooks.py" --platform codex --dry-run
 ~~~
+
+含空白的 Python 完整路徑可用 `--python "C:/Program Files/Python/python.exe"`，短啟動器可用 `--python "py -3"`。安裝器逐一引用執行檔與腳本路徑；Claude 在 Windows 依官方規則選 Git Bash 或 PowerShell，後者使用 `&` 呼叫運算子並保存 Python 結束碼。Codex 的 Windows 指令明確啟動 PowerShell，使用 UTF-16LE 的 EncodedCommand 傳入已引用路徑的指令，避免外層 shell 再拆路徑。依據：[Claude command hook 的 shell](https://code.claude.com/docs/en/hooks#command-hook-fields)、[Microsoft 呼叫運算子](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_operators?view=powershell-7.5)、[EncodedCommand 與結束碼](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_powershell_exe?view=powershell-5.1)。這些 Windows 指令已做替身驗證，仍需在目標 Windows 核對。
 
 安裝器備份並合併開場、防護及寫法 gate，複製共用 `hook_state.py`。只選寫法 gate 時，仍請保留 hook_state.py 及 block_dangerous.py，因 gate 重用其 heredoc／引號處理；可以不登記防護 handler。Codex 開場 handler 設 `additionalContextLimit: 0`，由本程式的字元上限控制輸出；官方預設約 2500 token 會將過長內容另存檔並只給預覽。Codex 須在 `/hooks` 審閱及信任新增或修改過的 hook，程式不代為信任，專案設定層亦須受信任。[Codex 官方設定及信任](https://learn.chatgpt.com/docs/hooks#review-and-trust-hooks)
 

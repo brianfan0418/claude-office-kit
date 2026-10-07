@@ -53,6 +53,8 @@ Codex 與 Claude 均可協助資源盤點、派工、執行與驗收；以下 Cl
 
 兩端可用同一 `docs/session-start.json`、工具摘要及寫法檢查。建議 Codex 合併 [AGENTS 範本](templates/AGENTS.md)，Claude 合併 [CLAUDE 範本](templates/CLAUDE.md)；共用規則可由 Claude 用原生 `@AGENTS.md` 匯入。Codex 已有 SessionStart／PreToolUse／PostToolUse，安裝器選 `--platform codex`，在 `/hooks` 審閱及信任；不假設 Codex 解析 Claude 的 `@path`。官方依據、長度設定、手動備援及缺檔處理見 [開場說明](hooks/README-session-start.md)。
 
+開新專案建議沿用 [project-docs](skills/project-docs/SKILL.md) 的共用 AGENTS.md 與匯入它的 CLAUDE.md 範本；在所選介面核對實際載入，不將 Cowork 視為已確認的自動載入。受版本控制或專案文件制度內的文件，建議照制度在原路徑覆寫並保存規定紀錄；其餘既有文件才另存保留原檔，修改範圍仍依使用者授權。
+
 寫新腳本前建議查開場所列登記表；寫規則、skill 及派工前完整載入 handoff-docs，專案文件另讀 project-docs。清單由 AI 依現行規則與定案自行增減，hook 不替它挑文件。採用本地 skills 時 Claude 用 `.claude/skills`，Codex 用 `.agents/skills`，亦可直接讀原檔；兩端派工均用任務名稱短指令。
 
 Claude Code 背景派工與背景等待，建議把工具 description 寫成「合約欄位整理（gpt-6.1-sol・high）」這種「任務名（模型・強度）」；設定核對後再填，短指令只供執行，畫面給人看的內容是描述。Bash App 顯示方式為本次使用者已實測，Codex 對等畫面未確認。收尾提醒、官方用量來源、既有狀態列的合併／復原與未實測介面，統一見 [開場說明](hooks/README-session-start.md)。

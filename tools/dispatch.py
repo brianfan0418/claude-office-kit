@@ -149,7 +149,7 @@ def main(argv=None, root=None):
         if args.install:
             return install(args.install)
         if args.list:
-            return subprocess.call([sys.executable, str(HERE / "dispatch-status.py"), str(root / "inbox/codex"), "--json"])
+            return subprocess.call([sys.executable, str(HERE / "dispatch-status.py"), str(root / "inbox/codex"), "--project", str(root), "--json"])
         if not args.name:
             parser.error("請提供任務名稱")
         return run_task(root, args.name, args.status, args.wait)

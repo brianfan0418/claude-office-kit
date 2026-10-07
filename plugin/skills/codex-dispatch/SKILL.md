@@ -7,7 +7,7 @@ description: 在 Windows 將大量讀檔、批次整理、依規格實作或第�
 
 Codex 與 Claude 均可協助執行或驗收工作；這份 skill 提供 Codex CLI 的非互動派工介面。建議依任務與目前環境選擇受派者，並以產出與證據判斷完成。
 
-CLI 旗標依官方[非互動執行](https://learn.chatgpt.com/docs/noninteractive)與 `codex exec --help`（0.160.1，Linux）核對。Windows 分離行程、npm 入口與 Job Object 尚未在實機驗證，建議首次用虛構任務測試。模型與額度見 [codex-models.md](../../knowledge/codex-models.md)；工具行為及官方來源見 [README-ai-management.md](../../tools/README-ai-management.md)。
+CLI 旗標依官方[非互動執行](https://learn.chatgpt.com/docs/non-interactive-mode)與 `codex exec --help`（0.160.1，Linux）核對。Windows 分離行程、npm 入口與 Job Object 尚未在實機驗證，建議首次用虛構任務測試。模型與額度見 [codex-models.md](../../knowledge/codex-models.md)；工具行為及官方來源見 [README-ai-management.md](../../tools/README-ai-management.md)。
 
 公司核准的企業版 Claude 與 Codex 之間派工不視為對外行為，不另設文件傳送同意步驟。寄信、提交表單與公開發布仍依使用者工作規則取得同意。
 

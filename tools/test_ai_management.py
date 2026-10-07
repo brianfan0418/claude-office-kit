@@ -103,6 +103,30 @@ class CommonTests(Base):
 
 
 class RegistryAuditTests(Base):
+    def test_windows_native_links_check_existing_missing_and_unc(self):
+        self.write("README.md", "[存在](C:/AI/exists.md)\n[缺檔](C:/AI/missing.md)\n[共享缺檔](<\\\\server\\share\\missing.md>)")
+        actual_exists = type(self.root).exists
+        checked = []
+        def exists(path):
+            name = str(path)
+            if name.startswith(("C:", "\\\\")):
+                checked.append(name)
+                return name == "C:/AI/exists.md"
+            return actual_exists(path)
+        # 保留主機實際 Path 類別，只替換平台判斷及目標檔案查詢。
+        from types import SimpleNamespace
+        with mock.patch.object(audit, "os", SimpleNamespace(name="nt", walk=os.walk)), \
+                mock.patch.object(type(self.root), "exists", exists):
+            findings = audit.audit(self.root)
+        self.assertEqual(len(checked), 3)
+        self.assertEqual(len(findings), 2)
+        self.assertTrue(all("不存在" in row for row in findings))
+
+    def test_windows_absolute_missing_link_is_not_skipped(self):
+        self.write("README.md", "[缺檔](C:/AI/work/missing-file.md)")
+        findings = audit.audit(self.root)
+        self.assertTrue(any("C:/AI/work/missing-file.md" in row for row in findings), findings)
+
     def test_registry_uses_docstrings_skips_tests_and_checks(self):
         self.write("tools/a.py", '"""工具用途。\n用法：python a.py\n"""\n')
         self.write("tools/test_a.py", "# test only")
@@ -156,6 +180,52 @@ class RegistryAuditTests(Base):
 
 
 class ModelUpdateTests(Base):
+    def test_known_upgrade_outcomes_clear_pending(self):
+        path = self.write("knowledge/codex-models.md", KNOWLEDGE)
+        args = mock.Mock(knowledge=path, refresh_only=False, dry_run=False,
+                         npm_prefix=self.root, codex_home=None, inbox=self.root / "inbox", cache=None)
+        for outcome in ({"ok": False, "rollback": "verified"}, {"ok": True}):
+            with self.subTest(outcome=outcome), \
+                    mock.patch.object(update, "installed_version", return_value="1.0.0"), \
+                    mock.patch.object(update, "cli", return_value=["npm"]), \
+                    mock.patch.object(update, "command", return_value=subprocess.CompletedProcess([], 0, '"2.0.0"')), \
+                    mock.patch.object(update, "active_jobs", return_value=False), \
+                    mock.patch.object(update, "direct_codex_busy", return_value=False), \
+                    mock.patch.object(update.shutil, "which", return_value=str(self.root / "codex")), \
+                    mock.patch.object(update, "upgrade", return_value=outcome), \
+                    mock.patch.object(update, "AppServer") as server, \
+                    mock.patch.object(update, "normalize_live", return_value=ROWS):
+                report = update.perform(args)
+                self.assertEqual(report["ok"], outcome["ok"])
+                self.assertFalse((common.state_dir() / "update-pending.json").exists())
+                self.assertEqual(server.call_count, int(outcome["ok"]))
+
+    def test_existing_pending_blocks_even_without_newer_version(self):
+        path = self.write("knowledge/codex-models.md", KNOWLEDGE)
+        common.write_json(common.state_dir() / "update-pending.json", {"from": "1.0.0", "to": "2.0.0"})
+        args = mock.Mock(knowledge=path, refresh_only=False, dry_run=False, cache=None)
+        with mock.patch.object(update, "installed_version", return_value="2.0.0") as version:
+            with self.assertRaisesRegex(RuntimeError, "上次升級"):
+                update.perform(args)
+            version.assert_not_called()
+
+    def test_unknown_rollback_keeps_pending_and_blocks_next_upgrade(self):
+        path = self.write("knowledge/codex-models.md", KNOWLEDGE)
+        args = mock.Mock(knowledge=path, refresh_only=False, dry_run=False,
+                         npm_prefix=self.root, codex_home=None, inbox=self.root / "inbox", cache=None)
+        with mock.patch.object(update, "installed_version", return_value="1.0.0"), \
+                mock.patch.object(update, "cli", return_value=["npm"]), \
+                mock.patch.object(update, "command", return_value=subprocess.CompletedProcess([], 0, '"2.0.0"')), \
+                mock.patch.object(update, "active_jobs", return_value=False), \
+                mock.patch.object(update, "direct_codex_busy", return_value=False), \
+                mock.patch.object(update.shutil, "which", return_value=str(self.root / "codex")), \
+                mock.patch.object(update, "upgrade", return_value={"ok": False, "rollback": "failed-or-unknown"}) as upgrade:
+            self.assertFalse(update.perform(args)["ok"])
+            self.assertTrue((common.state_dir() / "update-pending.json").exists())
+            with self.assertRaisesRegex(RuntimeError, "上次升級"):
+                update.perform(args)
+            self.assertEqual(upgrade.call_count, 1)
+
     def test_cache_fields_hidden_filtered(self):
         data = {"identity": "private", "models": [
             {"slug": "visible", "visibility": "list", "default_reasoning_level": "low", "supported_reasoning_levels": [{"effort": "high"}]},

@@ -14,6 +14,40 @@ import dispatch
 
 
 class DispatchTests(unittest.TestCase):
+    def test_overview_deduplicates_absolute_output_and_reports_bad_config(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("overview", Path(dispatch.__file__).with_name("dispatch-status.py"))
+        overview = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(overview)
+        out = self.root / "inbox/codex/合約欄位整理"
+        out.mkdir(parents=True)
+        (out / "job.json").write_text(json.dumps({"pid": -1, "status": "running"}), encoding="utf-8")
+        self.save({"version": 1, "out": str(out)})
+        bad = self.root / "tasks/壞設定/task.json"
+        bad.parent.mkdir()
+        bad.write_text("not JSON", encoding="utf-8")
+        outputs, warnings = overview.project_outputs(self.root)
+        self.assertEqual(outputs, {out})
+        self.assertEqual(len(overview.jobs(self.root / "inbox/codex", outputs)), 1)
+        self.assertIn("壞設定", warnings[0])
+        stream = io.StringIO()
+        with contextlib.redirect_stdout(stream):
+            code = overview.main([str(self.root / "inbox/codex"), "--project", str(self.root), "--json"])
+        self.assertEqual(code, 1)
+        self.assertTrue(json.loads(stream.getvalue())["warnings"])
+        for value in (None, ""):
+            self.save({"version": 1, "out": value})
+            self.assertEqual(overview.project_outputs(self.root)[0], {out})
+
+    def test_list_includes_custom_output(self):
+        self.save({"version": 1, "out": "deliveries/自訂輸出"})
+        out = self.root / "deliveries/自訂輸出"
+        out.mkdir(parents=True)
+        (out / "job.json").write_text(json.dumps({"pid": -1, "status": "running"}), encoding="utf-8")
+        result = subprocess.run([sys.executable, str(Path(dispatch.__file__)), "--list"],
+                                cwd=self.root, capture_output=True, encoding="utf-8")
+        self.assertEqual(len(json.loads(result.stdout)["jobs"]), 1, result.stdout + result.stderr)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

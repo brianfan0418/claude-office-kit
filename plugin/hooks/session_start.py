@@ -211,7 +211,7 @@ def management_context(root, tools_dir, session=None):
     """只查本機紀錄；工具未採用或查詢失敗時略過，不查帳號或連網。"""
     lines = []
     jobs = Path(os.environ.get("AI_OFFICE_JOBS", str(root / "inbox" / "codex")))
-    queries = [("dispatch-status.py", [str(jobs), "--json"]), ("doc-audit.py", [str(root), "--json"])]
+    queries = [("dispatch-status.py", [str(jobs), "--project", str(root), "--json"]), ("doc-audit.py", [str(root), "--json"])]
     for name, args in queries:
         script = tools_dir / name
         if not script.is_file():
@@ -220,6 +220,8 @@ def management_context(root, tools_dir, session=None):
             result = subprocess.run([sys.executable, str(script), *args], capture_output=True, encoding="utf-8", timeout=8)
             info = json.loads(result.stdout)
             if name == "dispatch-status.py":
+                if info.get("warnings"):
+                    lines.append("派工總覽警示：" + "；".join(info["warnings"][:3])[:500])
                 rows = [row for row in info.get("jobs", []) if row.get("status") != "done"]
                 if rows:
                     counts = {status: sum(r.get("status") == status for r in rows) for status in sorted({r.get("status", "unknown") for r in rows})}

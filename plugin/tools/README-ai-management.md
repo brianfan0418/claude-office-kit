@@ -11,7 +11,7 @@
 | [claude-quota.py](claude-quota.py) | 官方查詢入口與企業 API 限制說明 | [Claude Code /usage](https://code.claude.com/docs/en/costs)、[Analytics APIs](https://platform.claude.com/docs/en/manage-claude/analytics-api) |
 | [codex-autoupdate.py](codex-autoupdate.py) | npm 新版升級、短回覆實測、失敗回退、模型清單與收件匣通知 | [官方 CLI 安裝](https://learn.chatgpt.com/docs/cli)、[App Server 模型清單](https://learn.chatgpt.com/docs/app-server) |
 | [official-docs-fetch.py](official-docs-fetch.py) | 四組官方來源，一頁一檔及來源 manifest | [Claude Code 索引](https://code.claude.com/docs/llms.txt)、[Claude Platform 索引](https://platform.claude.com/llms.txt)、[OpenAI 使用文件索引](https://learn.chatgpt.com/llms.txt)、[OpenAI API 索引](https://developers.openai.com/api/docs/llms.txt) |
-| [dispatch.py](dispatch.py) 與 codex-run／queue 引擎 | 中文短指令、任務設定檔、背景 worker、結果與摘要 JSON | [npm scripts](https://docs.npmjs.com/cli/v11/using-npm/scripts/) 的名稱與設定分離慣例；[官方非互動執行](https://learn.chatgpt.com/docs/noninteractive)、[Python subprocess](https://docs.python.org/3/library/subprocess.html) |
+| [dispatch.py](dispatch.py) 與 codex-run／queue 引擎 | 中文短指令、任務設定檔、背景 worker、結果與摘要 JSON | [npm scripts](https://docs.npmjs.com/cli/v11/using-npm/scripts/) 的名稱與設定分離慣例；[官方非互動執行](https://learn.chatgpt.com/docs/non-interactive-mode)、[Python subprocess](https://docs.python.org/3/library/subprocess.html) |
 | [dispatch-status.py](dispatch-status.py) | 執行中、完成、失敗、缺報告、中斷等狀態 | 同工具包 `job.json`、`summary.json`、回覆檔與行程狀態，不推測交付物 |
 | [doc-audit.py](doc-audit.py) | HANDOFF 修改時間落後、索引落差、本機失效連結；選用 Git 檢查 | [Path.stat](https://docs.python.org/3/library/pathlib.html#pathlib.Path.stat)、工具包登記表及實際檔案 |
 | [registry.py](registry.py) | 工具 [REGISTRY.md](REGISTRY.md) 與知識 [INDEX.md](../knowledge/INDEX.md) | Python 檔頭 docstring（[AST](https://docs.python.org/3/library/ast.html#ast.get_docstring)）與文件 frontmatter |
@@ -40,7 +40,7 @@ python "C:\AI\office-kit\tools\codex-autoupdate.py" --knowledge "C:\AI\work\know
 
 程式檢查 npm 的正式版版本；有派工或直接執行的 Codex CLI 時延後升級。它僅更新目前 npm 安裝位置的 CLI，安裝位置不一致時停止；自訂 npm prefix 可明確傳 `--npm-prefix`。升級後核對版本，再用一次「只回覆 OK」實測；會用目前帳號額度。實測失敗時裝回舊版並核對版本，回退失敗會明示，不宣稱成功。
 
-安裝或實測逾時時，可能仍有子行程，程式留下 `update-pending.json` 並停止；建議先核對行程、版本與 `last-upgrade.json` 再處理，不直接重跑。`runtime.lock/owner.json` 與 `.fetch.lock/owner.json` 亦供中斷後核對；確認對應 PID 已結束、沒有安裝或下載進行中後，可移除該工具建立的鎖再重跑。
+安裝、實測或回退結果不明時，程式保留 `update-pending.json` 並停止；只有升級實測成功或回退版本已核對時才清除。後續一般更新遇到 pending 即停止，包括版本已是最新版的情況。建議先核對行程、版本與 `last-upgrade.json`，確認沒有安裝進行中並記錄實際結果後，再處理 pending，不直接重跑。`runtime.lock/owner.json` 與 `.fetch.lock/owner.json` 亦供中斷後核對；確認對應 PID 已結束、沒有安裝或下載進行中後，可移除該工具建立的鎖再重跑。
 
 只更新模型知識可用 `--refresh-only`；離線匯入目前帳號快取可再加 `--cache "$env:USERPROFILE\.codex\models_cache.json"`。只輸出可見模型及必要欄位，不複製帳號憑證。清單新增、移除或能力變更會產生通知；未知的新模型用途由您的 AI 查官方說明後補進標記之外的人工建議。程式不更改預設模型或切換帳號。
 
@@ -60,7 +60,7 @@ python dispatch.py --list
 
 背景派工與背景等待的 description 均請寫「任務名（模型・強度）」，模型與強度先核對任務設定及 CLI 選擇；模型 null 時不能猜。正確工具呼叫、格式 gate、本次使用者的 Claude Code App 實測依據及 Codex 對應畫面未確認事項見 [背景標籤說明](../hooks/README-session-start.md#背景畫面顯示任務模型與強度)。命令保留供實際執行，不作為人類面板標籤。
 
-預設短指令派出獨立 worker，回傳一行 JSON；`ok:true` 是確認啟動，送出動作結束不代表工作完成。預設輸出 `inbox/codex/合約欄位整理/` 必須不存在；新的交辦用新名稱，既有工作先查狀態，不覆寫。單次 `--status` 不等待，`--list` 列全專案總覽。
+預設短指令派出獨立 worker，回傳一行 JSON；`ok:true` 是確認啟動，送出動作結束不代表工作完成。預設輸出 `inbox/codex/合約欄位整理/` 必須不存在；新的交辦用新名稱，既有工作先查狀態，不覆寫。單次 `--status` 不等待，`--list` 合併預設 `inbox/codex` 與 `tasks/*/task.json` 指定的 out，去重列出全專案總覽；設定無法讀取時回報 warnings，不將它當成沒有工作。自訂 out 只讀該任務的 job.json，不遞迴掃外部目錄。
 
 需要等待時短指令為 `python dispatch.py 合約欄位整理 --wait`，timeout 從 task.json 讀分鐘數；逾時結束碼為 2，worker 繼續。Claude 可用工具背景執行功能；Codex hook 的 Bash 輸入不含背景參數，會攔等待，建議單次查狀態或在獨立終端等待。兩端差異與官方依據見 [開場說明](../hooks/README-session-start.md)。
 
@@ -110,9 +110,9 @@ python "C:\AI\office-kit\tools\registry.py" knowledge "C:\AI\work\knowledge"
 
 登記表由工具檔頭說明產生，知識索引由 frontmatter 的 `name`、`description`、`type`、`status`、`updated` 產生；支援單行 `key: value`，不是完整 YAML parser。`--check` 只比對，不寫檔。既有工具包沒有同等產生器，本版提供 `registry.py`；後續建議沿用，不另外重做。
 
-`doc-audit.py` 依檔案修改時間提示 HANDOFF 可能落後，並核對登記表及 Markdown 本機連結；修改時間可能因複製而改變，因此僅提供待核對線索，不自動改文件。預設容許 2 秒時間差，略過 `.git`、快取、虛擬環境、`scratch`、`inbox` 及符號連結；連結不檢查網路頁面或 Markdown 標題錨點。只有選用 `--git` 且資料夾有 Git 才加查未提交／未推送；缺少 Git 不影響其餘功能。
+`doc-audit.py` 依檔案修改時間提示 HANDOFF 可能落後，並核對登記表及 Markdown 本機連結；修改時間可能因複製而改變，因此僅提供待核對線索，不自動改文件。預設容許 2 秒時間差，略過 `.git`、快取、虛擬環境、`scratch`、`inbox` 及符號連結；連結不檢查網路頁面或 Markdown 標題錨點。Windows 磁碟絕對路徑與反斜線 UNC 會辨識為本機連結；在 Windows 查檔案存在，在其他平台明示「無法核對」，不把未核對當成通過。只有選用 `--git` 且資料夾有 Git 才加查未提交／未推送；缺少 Git 不影響其餘功能。
 
-開場 hook 可附派工與文件落差摘要，有事項才輸出；相同摘要在同一 session 只提醒一次。工具包與外掛能從相鄰 `tools/` 找程式；使用者層 hook 安裝器會加上 `--tools-dir` 指向工具包，因此建議保留工具包位置。也可設 `AI_OFFICE_TOOLS`。派工預設查專案 `inbox/codex`，可用 `AI_OFFICE_JOBS` 指定其他位置。未採用工具、查詢失敗或逾時則略過摘要；需要核對時建議直接執行上述查詢，不把沒有提示當成檢查通過。
+開場 hook 可附派工與文件落差摘要，有事項才輸出；相同摘要在同一 session 只提醒一次。工具包與外掛能從相鄰 `tools/` 找程式；使用者層 hook 安裝器會加上 `--tools-dir` 指向工具包，因此建議保留工具包位置。也可設 `AI_OFFICE_TOOLS`。派工合併專案 `inbox/codex` 與任務設定指定的 out；`AI_OFFICE_JOBS` 可替換第一個掃描位置，仍合併專案設定。手動總覽可用 `dispatch-status.py <紀錄根目錄> --project <專案> --json`。未採用工具、查詢失敗或逾時則略過摘要；需要核對時建議直接執行上述查詢，不把沒有提示當成檢查通過。
 
 ## Windows 工作排程器（選用說明）
 

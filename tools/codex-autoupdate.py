@@ -172,6 +172,9 @@ def perform(args):
     old_state = read_json(state_dir() / "autoupdate.json", {})
     report = {"ok": True, "upgraded": False}
     if not args.refresh_only:
+        pending = state_dir() / "update-pending.json"
+        if pending.exists():
+            raise RuntimeError("上次升級尚無完成紀錄；請核對 update-pending.json 與實際版本")
         old = installed_version()
         result = command(cli("npm") + ["view", "@openai/codex", "version", "--json"], timeout=60)
         new = json.loads(result.stdout) if result.returncode == 0 else None
@@ -193,13 +196,10 @@ def perform(args):
             if prefix.resolve() not in executable.parents:
                 raise RuntimeError("目前 Codex 不在指定 npm prefix；未升級，請核對安裝方式")
             # 先留意圖紀錄；中斷後須核對狀態，不在下次執行盲目重做。
-            pending = state_dir() / "update-pending.json"
-            if pending.exists():
-                raise RuntimeError("上次升級尚無完成紀錄；請核對 update-pending.json 與實際版本")
             write_json(pending, {"from": old, "to": new, "pid": os.getpid()})
             report["upgrade"] = upgrade(old, new, args.codex_home, prefix)
             write_json(state_dir() / "last-upgrade.json", report["upgrade"])
-            if report["upgrade"].get("rollback") != "not-run":
+            if report["upgrade"].get("ok") or report["upgrade"].get("rollback") == "verified":
                 pending.unlink(missing_ok=True)
             if not report["upgrade"]["ok"]:
                 report["ok"] = False

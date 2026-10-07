@@ -10,7 +10,7 @@
 |---|---|---|
 | [CLAUDE 範本](templates/CLAUDE.md)、[AGENTS 範本](templates/AGENTS.md) | 證據、授權、落檔、必讀維護及先查登記表 | Claude／Codex 依各自原生指示檔採用 |
 | [handoff-docs](skills/handoff-docs/SKILL.md) | 撰寫可檢查的規則、交辦與交接文件 | 多次對話接手同一項工作 |
-| [project-docs](skills/project-docs/SKILL.md) | 專案文件結構與範本 | 需要追蹤進度、決策與下一步 |
+| [project-docs](skills/project-docs/SKILL.md) | 專案文件結構與共用 AGENTS／CLAUDE 入口範本 | 需要追蹤進度、決策與下一步 |
 | [evidence-discipline](skills/evidence-discipline/SKILL.md) | 原文引用、查證與核對表 | 正式文件、事實與數字須可追溯 |
 | [maker-checker](skills/maker-checker/SKILL.md) | 由另一個不帶前情的對話驗收 | 抽取欄位、審閱與批次修改需要獨立核對 |
 | [codex-dispatch](skills/codex-dispatch/SKILL.md) | 在 Windows 派工作業給 Codex | 大量讀檔、批次處理或第二意見，且已有企業訂閱與 CLI |
@@ -56,7 +56,7 @@ python3 tools/build_plugin.py --check
 claude plugin validate plugin
 ```
 
-Windows 可將 `python3` 換成已確認可用的 `python` 或 `py -3`。測試涵蓋範圍與未實測環境見 [docs/HANDOFF.md](docs/HANDOFF.md)。外掛產生器的 `--check` 只比對副本，不修改檔案。
+Windows 可將 `python3` 換成已確認可用的 `python` 或 `py -3`。回歸測試亦涵蓋未知回退保護、自訂派工輸出、Windows 絕對路徑、含空白的 Python 路徑，以及文件更新制度與兩端入口。受版本控制或專案制度管理的文件照制度在原路徑更新，其餘既有文件才另存保留原檔。測試涵蓋範圍與未實測環境見 [docs/HANDOFF.md](docs/HANDOFF.md)。外掛產生器的 `--check` 只比對副本，不修改檔案。
 
 ## 授權
 

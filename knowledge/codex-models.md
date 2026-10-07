@@ -49,7 +49,7 @@ updated: 2026-10-07
 
 Codex 可以透過 ChatGPT 帳號登入或 API 金鑰使用。企業模型、功能及用量取決於登入方式、方案與工作區設定；API 的用量及計費不能當成 ChatGPT 訂閱剩餘額度。企業費率與信用額度請依合約及管理介面核對，不從個人方案推算。[官方用量說明](https://learn.chatgpt.com/docs/pricing)
 
-建議先用 `codex login status` 確認登入狀態；`CODEX_HOME` 可指定不同的本機設定與登入資料位置，但本工具包不自動切換帳號，也不搬移憑證。是否採用多帳號由您與公司決定。[官方設定說明](https://learn.chatgpt.com/docs/config-basics)
+建議先用 `codex login status` 確認登入狀態；`CODEX_HOME` 可指定不同的本機設定與登入資料位置，但本工具包不自動切換帳號，也不搬移憑證。是否採用多帳號由您與公司決定。[官方設定說明](https://learn.chatgpt.com/docs/config-file/config-advanced)
 
 目前帳號的限制視窗可由 [codex-quota.py](../tools/codex-quota.py) 呼叫官方 `account/rateLimits/read` 取得。可能有多個模型額度桶、不同長度的視窗或空值；建議依回傳的視窗長度與重置時間解讀。無資料代表查不到，不能當成 0% 已用或無限額度。本機 token 紀錄也不等於企業帳單。[App Server 帳號介面](https://learn.chatgpt.com/docs/app-server)
 

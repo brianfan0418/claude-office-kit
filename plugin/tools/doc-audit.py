@@ -5,7 +5,7 @@ mtime 是待核對線索，不代表文件內容一定有錯；不修改任何�
 """
 import argparse
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import re
 import shutil
 import subprocess
@@ -68,6 +68,14 @@ def audit(root, include_git=False, grace=2):
         text = path.read_text(encoding="utf-8-sig", errors="replace")
         for link in link_targets(text):
             if any(mark in link for mark in ("<", ">", "${", "{{")) or link.startswith("#"):
+                continue
+            local = unquote(link.split("#", 1)[0].split("?", 1)[0])
+            # 磁碟路徑須先辨識；urlsplit 會把 C: 誤判為 URL scheme。
+            if PureWindowsPath(local).is_absolute() and (re.match(r"^[A-Za-z]:[/\\]", local) or local.startswith("\\\\")):
+                if os.name != "nt":
+                    findings.append(f"{path.relative_to(root)} 的 Windows 本機連結無法在目前平台核對：{link}")
+                elif not Path(local).exists():
+                    findings.append(f"{path.relative_to(root)} 的本機連結不存在：{link}")
                 continue
             url = urlsplit(link)
             if url.scheme or url.netloc or not url.path:

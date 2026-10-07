@@ -17,6 +17,17 @@ import install_hooks
 
 
 class SessionTests(unittest.TestCase):
+    def test_custom_output_in_opening_summary(self):
+        task = self.root / "tasks/合約整理"
+        task.mkdir(parents=True)
+        (task / "task.json").write_text(json.dumps({"version": 1, "out": "deliveries/合約整理"}), encoding="utf-8")
+        out = self.root / "deliveries/合約整理"
+        out.mkdir(parents=True)
+        (out / "job.json").write_text(json.dumps({"pid": -1, "status": "running"}), encoding="utf-8")
+        summary = session.management_context(self.root, HERE.parent / "tools")
+        self.assertIn("合約整理", summary)
+        self.assertIn("interrupted", summary)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

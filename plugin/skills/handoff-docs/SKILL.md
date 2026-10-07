@@ -12,7 +12,7 @@ AI 寫給下一個 AI 看的文件，讀的人沒有你現在的對話記憶，�
 
 | 內容 | 放哪 |
 |---|---|
-| 每次都要知道的事實和規則 | CLAUDE.md（使用者層級 `%USERPROFILE%\.claude\`、工作資料夾根目錄、專案根目錄） |
+| 每次都要知道的事實和規則 | Codex 原生 `AGENTS.md`；Claude Code 原生 `CLAUDE.md`，可用 `@AGENTS.md` 匯入共用規則；位置與載入範圍見 skill `project-docs` 的官方依據 |
 | 偶爾才用的流程、長清單 | skill（`%USERPROFILE%\.claude\skills\<名稱>\SKILL.md`），需要時才載入 |
 | 非做到不可、不能靠自覺的事 | `settings.json` 的權限規則或 hook，不要只寫在文件裡 |
 | 只在特定時機才該想起的提醒 | hook，但要「有事才出聲」：沒問題就完全不輸出、同一件事每個工作階段只講一次、訊息壓到一行。每次都講的提醒會變成背景雜訊被自動忽略 |
@@ -22,6 +22,8 @@ AI 寫給下一個 AI 看的文件，讀的人沒有你現在的對話記憶，�
 | Codex 要讀的規則 | `AGENTS.md`；CLAUDE.md 用 `@AGENTS.md` 引用共用 |
 
 專案內的 HANDOFF、ROADMAP、decisions、specs 放哪照 skill `project-docs`。
+
+修改既有文件時，受版本控制或專案文件制度內的檔案，請照制度在原路徑覆寫並保存規定紀錄；其餘才另存新檔保留原檔。修改範圍仍依使用者授權。以下「取代舊規則」適用於已授權維護的制度內文件。
 
 ## 寫 CLAUDE.md / 規則檔
 

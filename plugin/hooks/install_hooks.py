@@ -13,9 +13,12 @@
 結束碼 0 表示完成或已經是最新。只用 Python 標準庫。
 """
 import argparse
+import base64
 import datetime
 import json
+import os
 import re
+import shlex
 import shutil
 import sys
 from pathlib import Path
@@ -27,25 +30,65 @@ SESSION_MATCHER = "startup|resume|clear|compact"
 PRETOOL_MATCHER = "Bash|PowerShell|Edit|Write|MultiEdit|apply_patch|Agent|spawn_agent|exec_command"
 
 
-def command_for(python, claude_dir, script, platform="claude"):
+def python_argv(value):
+    """完整路徑是一個參數；短啟動器可附 -3，例如 py -3。"""
+    if "\n" in value or "\r" in value:
+        raise ValueError("--python 不可包含換行")
+    value = value.strip()
+    if not value:
+        raise ValueError("--python 請提供 Python 指令或完整執行檔路徑")
+    if value.startswith('"') and value.endswith('"'):
+        value = value[1:-1]
+    if not value.strip():
+        raise ValueError("--python 不可為空路徑")
+    if "/" in value or "\\" in value:
+        return [value.replace("\\", "/")]
+    argv = shlex.split(value)
+    if not argv or not argv[0]:
+        raise ValueError("--python 不可為空指令")
+    return argv
+
+
+def command_for(python, claude_dir, script, platform="claude", shell="bash"):
     path = (claude_dir / "hooks" / script).as_posix()
-    command = f'{python} "{path}"'
+    argv = python_argv(python)
+    if shell == "powershell":
+        # & 是 PowerShell 呼叫字串路徑的運算子；單引號內不展開變數。
+        command = "& " + " ".join("'" + arg.replace("'", "''") + "'" for arg in argv)
+    else:
+        command = " ".join(shlex.quote(arg) for arg in argv)
+    def quoted(value):
+        # 保持腳本路徑的雙引號格式，供既有 wrapper 辨識與升級。
+        if shell == "powershell":
+            value = value.replace("`", "``").replace("$", "`$").replace('"', '`"')
+        else:
+            value = re.sub(r'([\\$`\"])', r'\\\1', value)
+        return '"' + value + '"'
+    command += " " + quoted(path)
     if script == "session_start.py":
-        command += f' --tools-dir "{(HERE.parent / "tools").as_posix()}"'
+        command += " --tools-dir " + quoted((HERE.parent / "tools").as_posix())
     if script == "block_dangerous.py" and platform == "codex":
         command += " --platform codex"
     return command
 
 
-def add_hook(settings, event, matcher, command):
+def add_hook(settings, event, matcher, command, shell=None, legacy_commands=()):
     """加入一筆 hook；回傳是否有新增。"""
     groups = settings.setdefault("hooks", {}).setdefault(event, [])
     for group in groups:
         for hook in group.get("hooks", []):
+            if hook.get("command") in legacy_commands and hook.get("command") != command:
+                hook["command"] = command
+                group["matcher"] = matcher
+                if shell:
+                    hook["shell"] = shell
+                return True
             if hook.get("command") == command:
                 # 升級 matcher 亦須生效，包含 compact 與新增工具。
-                if group.get("matcher") != matcher:
+                if group.get("matcher") != matcher or (shell and hook.get("shell") != shell):
                     group["matcher"] = matcher
+                    if shell:
+                        hook["shell"] = shell
                     return True
                 return False
             # 本安裝器舊版的同一指令升級為附 tools-dir 的版本，避免兩次開場輸出。
@@ -53,7 +96,10 @@ def add_hook(settings, event, matcher, command):
                 hook["command"] = command
                 group["matcher"] = matcher
                 return True
-    groups.append({"matcher": matcher, "hooks": [{"type": "command", "command": command}]})
+    handler = {"type": "command", "command": command}
+    if shell:
+        handler["shell"] = shell
+    groups.append({"matcher": matcher, "hooks": [handler]})
     return True
 
 
@@ -62,10 +108,14 @@ def main(argv=None):
     parser.add_argument("--claude-dir", default=str(Path.home() / ".claude"))
     parser.add_argument("--platform", choices=("claude", "codex"), default="claude")
     parser.add_argument("--codex-dir", type=Path, default=Path.home() / ".codex")
-    parser.add_argument("--python", default="python", help="hook 指令使用的 Python 指令名稱（python 或 py）")
+    parser.add_argument("--python", default="python", help="Python 指令（python／py -3）或完整執行檔路徑，路徑有空白時加引號")
     parser.add_argument("--dry-run", action="store_true", help="只顯示會做什麼，不寫入")
     parser.add_argument("--with-context-status", action="store_true", help="Claude 選用官方 context 收尾提醒；沿用既有 statusLine")
     args = parser.parse_args(argv)
+    try:
+        python_argv(args.python)
+    except ValueError as exc:
+        parser.error(str(exc))
     if args.with_context_status and args.platform != "claude":
         parser.error("Codex 的官方 context 百分比取得方式未確認，不能設定 Claude statusLine。")
 
@@ -84,23 +134,39 @@ def main(argv=None):
             print(f"停止：{settings_path} 的最上層不是物件。未修改任何檔案。", file=sys.stderr)
             return 2
 
+    shell = "bash"
+    if os.name == "nt":
+        from context_status import forward_argv
+        shell = "bash" if Path(forward_argv("")[0]).name.lower() in ("bash", "bash.exe") else "powershell"
+    def hook_command(script):
+        # Codex 未有 Claude 的 shell 欄位，Windows 明確啟動 PowerShell。
+        if os.name == "nt" and args.platform == "codex":
+            text = command_for(args.python, claude_dir, script, args.platform, "powershell") + "; exit $LASTEXITCODE"
+            encoded = base64.b64encode(text.encode("utf-16-le")).decode("ascii")
+            return "powershell.exe -NoProfile -NonInteractive -EncodedCommand " + encoded
+        text = command_for(args.python, claude_dir, script, args.platform, shell)
+        return text + "; exit $LASTEXITCODE" if shell == "powershell" else text
+    def install_hook(event, matcher, script):
+        legacy = f'{args.python} "{(claude_dir / "hooks" / script).as_posix()}"'
+        legacy_commands = [legacy]
+        if script == "session_start.py":
+            legacy_commands.append(legacy + f' --tools-dir "{(HERE.parent / "tools").as_posix()}"')
+        elif script == "block_dangerous.py" and args.platform == "codex":
+            legacy_commands.append(legacy + " --platform codex")
+        return add_hook(settings, event, matcher, hook_command(script),
+                        shell if args.platform == "claude" and os.name == "nt" else None, legacy_commands)
     changed = []
-    changed.append(add_hook(settings, "SessionStart", SESSION_MATCHER,
-                            command_for(args.python, claude_dir, "session_start.py", args.platform)))
-    changed.append(add_hook(settings, "PreToolUse", PRETOOL_MATCHER,
-                            command_for(args.python, claude_dir, "block_dangerous.py", args.platform)))
-    changed.append(add_hook(settings, "PreToolUse", PRETOOL_MATCHER,
-                            command_for(args.python, claude_dir, "skill_gate.py")))
-    changed.append(add_hook(settings, "PostToolUse", "Skill|Read|Bash|PowerShell|exec_command",
-                            command_for(args.python, claude_dir, "skill_gate.py")))
+    changed.append(install_hook("SessionStart", SESSION_MATCHER, "session_start.py"))
+    changed.append(install_hook("PreToolUse", PRETOOL_MATCHER, "block_dangerous.py"))
+    changed.append(install_hook("PreToolUse", PRETOOL_MATCHER, "skill_gate.py"))
+    changed.append(install_hook("PostToolUse", "Skill|Read|Bash|PowerShell|exec_command", "skill_gate.py"))
     original_status = None
     original_path = claude_dir / "hooks" / "statusline-original.json"
     if args.platform == "claude":
-        changed.append(add_hook(settings, "UserPromptSubmit", "",
-                                command_for(args.python, claude_dir, "wrapup_nudge.py")))
+        changed.append(install_hook("UserPromptSubmit", "", "wrapup_nudge.py"))
         if args.with_context_status:
             old = settings.get("statusLine")
-            command = command_for(args.python, claude_dir, "context_status.py")
+            command = command_for(args.python, claude_dir, "context_status.py", shell=shell)
             if old is not None and (not isinstance(old, dict) or old.get("type") != "command"
                                     or not isinstance(old.get("command"), str) or not old["command"].strip()):
                 print("停止：現有 statusLine 不是有效的 command；未修改任何檔案。", file=sys.stderr)
@@ -122,7 +188,7 @@ def main(argv=None):
     if args.platform == "codex":
         for group in settings["hooks"]["SessionStart"]:
             for hook in group.get("hooks", []):
-                if "session_start.py" in hook.get("command", ""):
+                if "session_start.py" in hook.get("command", "") or hook.get("command") == hook_command("session_start.py"):
                     if hook.get("additionalContextLimit") != 0:
                         hook["additionalContextLimit"] = 0
                         changed.append(True)
