@@ -18,6 +18,124 @@ import install_hooks
 
 
 class InstallCommandTests(unittest.TestCase):
+    def check_user_hook_preserved(self, command, execute=False):
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / "config folder"
+            target.mkdir()
+            script = (target / "hooks/skill_gate.py").as_posix()
+            text = command.format(script=script, quoted=shlex.quote(script))
+            if execute:
+                actual = text.replace("python ", shlex.quote(sys.executable) + " ", 1)
+                result = subprocess.run(actual, shell=True, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), script)
+                self.assertFalse(Path(script).exists())
+            user = {"type": "command", "command": text, "timeout": 9}
+            group = {"matcher": "Write", "hooks": [user]}
+            file = target / "settings.json"
+            file.write_text(json.dumps({"hooks": {"PreToolUse": [group]}}), encoding="utf-8")
+            args = ["--claude-dir", str(target), "--python", "python"]
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(install_hooks.main(args), 0)
+                self.assertIn(group, json.loads(file.read_text())["hooks"]["PreToolUse"])
+                before = file.read_bytes()
+                self.assertEqual(install_hooks.main(args), 0)
+                self.assertEqual(before, file.read_bytes())
+
+    def test_code_mode_handler_preserved(self):
+        self.check_user_hook_preserved('python -c"import sys; print(sys.argv[1])" {quoted}', execute=True)
+        for option in ('-c "pass"', '-Ic"pass"', '-Bc"pass"'):
+            with self.subTest(option=option):
+                self.check_user_hook_preserved('python ' + option + ' {quoted}')
+
+    def test_module_mode_handler_preserved(self):
+        for option in ('-m example', '-mexample', '-Imexample'):
+            with self.subTest(option=option):
+                self.check_user_hook_preserved('python ' + option + ' {quoted}')
+
+    def test_paths_in_other_parameters_preserved(self):
+        for command in ('python --config {quoted}', 'python -W{quoted} user.py',
+                        'python -X {quoted} user.py', 'python user --reference {quoted}',
+                        'python user.py --reference {quoted}', 'python - {quoted}'):
+            with self.subTest(command=command):
+                self.check_user_hook_preserved(command)
+
+    def test_user_custom_hook_preserved(self):
+        self.check_user_hook_preserved('python "C:/User Tools/skill_gate.py" --compare {quoted}')
+        self.check_user_hook_preserved('"C:/User Tools/custom.exe" "C:/Python/python.exe" {quoted}')
+        self.check_user_hook_preserved('C:/Tools/custom "C:/Python/python.exe" {quoted}')
+
+    def test_shell_quoting_and_windows_backslashes(self):
+        for shell in ('bash', 'powershell'):
+            root = Path("C:/Office files/中文 O'Brien/$cash`box/space\u00a0inside")
+            script = root / "hooks/skill_gate.py"
+            command = install_hooks.command_for("C:/O'Brien/Python/python.exe", root, "skill_gate.py", shell=shell)
+            with self.subTest(shell=shell):
+                self.assertEqual(install_hooks.hook_script({"type": "command", "command": command, "shell": shell}),
+                                 install_hooks.script_identity(script))
+        for path in (r"C:\Office files\hooks\skill_gate.py", r"\\server\Office files\hooks\skill_gate.py"):
+            with self.subTest(path=path):
+                for quote in ('"', "'"):
+                    command = "& 'C:\\Python\\python.exe' " + quote + path + quote + "; exit $LASTEXITCODE"
+                    self.assertEqual(install_hooks.hook_script({"type": "command", "command": command, "shell": "powershell"}),
+                                     install_hooks.script_identity(path))
+
+    def test_ambiguous_shell_expressions_preserved(self):
+        for command in ('echo example; python {quoted}', 'python {quoted} && echo user',
+                        'python {quoted}; echo user', 'python --unknown {quoted}',
+                        'python\u00a0{quoted}', 'python\v{quoted}',
+                        'python -c"unterminated {quoted}'):
+            with self.subTest(command=command):
+                self.check_user_hook_preserved(command)
+        for command in ('& python "$hook"', '& python "C:/Office/“draft”/hooks/skill_gate.py"',
+                        '& “python” “C:/Office/hooks/skill_gate.py”'):
+            with self.subTest(command=command):
+                self.assertIsNone(install_hooks.hook_script({"type": "command", "command": command, "shell": "powershell"}))
+
+    def test_python_options_skip_operands_and_stop_at_script(self):
+        path = "C:/Office/hooks/skill_gate.py"
+        for options in ('-IB', '-W ignore', '-Wignore', '-X utf8', '-Xutf8', '--', 'py -3'):
+            command = options + ' "' + path + '"' if options.startswith('py') else 'python ' + options + ' "' + path + '"'
+            with self.subTest(options=options):
+                self.assertEqual(install_hooks.hook_script({"type": "command", "command": command}), install_hooks.script_identity(path))
+        self.assertEqual(install_hooks.hook_script({"type": "command", "command": 'python "C:/User/runner.py" "' + path + '"'}),
+                         install_hooks.script_identity("C:/User/runner.py"))
+
+    def test_exec_arguments_and_encoded_modes_preserved(self):
+        path = r"C:\Office files\hooks\skill_gate.py"
+        wanted = 'python "C:/Office files/hooks/skill_gate.py"'
+        cases = [{"type": "command", "command": "python", "args": args}
+                 for args in (["-cpass", path], ["-mexample", path], ["-W", path, "user.py"],
+                              ["user.py", path], ["--unknown", path])]
+        for text in ('& python -c"pass" "' + path + '"', '& python -mexample "' + path + '"'):
+            encoded = base64.b64encode((text + "; exit $LASTEXITCODE").encode("utf-16-le")).decode()
+            cases.append({"type": "command", "command": "powershell.exe -NoProfile -NonInteractive -EncodedCommand " + encoded})
+        cases.append({"type": "command", "command": '& python "' + path + '"', "shell": "bash"})
+        cases.append({"type": "command", "command": wanted, "args": ["user argument"]})
+        for user in cases:
+            with self.subTest(user=user):
+                group = {"matcher": "Write", "hooks": [user]}
+                settings = {"hooks": {"PreToolUse": [group]}}
+                install_hooks.add_hook(settings, "PreToolUse", "Bash", wanted, script_path=path)
+                self.assertIn(group, settings["hooks"]["PreToolUse"])
+
+    def test_user_session_metadata_and_statusline_parameters_preserved(self):
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder)
+            user = {"type": "command", "command": 'python -c"pass" "' + (target / 'hooks/session_start.py').as_posix() + '"',
+                    "additionalContextLimit": 123}
+            group = {"matcher": "startup", "hooks": [user]}
+            file = target / "hooks.json"
+            file.write_text(json.dumps({"hooks": {"SessionStart": [group]}}), encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(install_hooks.main(["--platform", "codex", "--codex-dir", str(target)]), 0)
+            self.assertIn(group, json.loads(file.read_text())["hooks"]["SessionStart"])
+            status = {"type": "command", "command": 'python -c"pass" "' + (target / 'hooks/context_status.py').as_posix() + '"', "padding": 2}
+            (target / "settings.json").write_text(json.dumps({"statusLine": status}), encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(install_hooks.main(["--claude-dir", str(target), "--with-context-status"]), 0)
+            self.assertEqual(json.loads((target / "hooks/statusline-original.json").read_text()), status)
+
     def test_existing_duplicates_are_consolidated_and_user_groups_preserved(self):
         import context_status
         with tempfile.TemporaryDirectory() as folder:
@@ -116,20 +234,23 @@ class InstallCommandTests(unittest.TestCase):
     def test_git_bash_to_powershell_replaces_same_project_hooks(self):
         self.check_shell_switch("bash.exe", "powershell.exe")
 
-    def test_reinstall_replaces_old_unquoted_interpreter(self):
+    def test_reinstall_preserves_ambiguous_unquoted_interpreter(self):
         python = "C:/Program Files/Python/python.exe"
         with tempfile.TemporaryDirectory() as folder:
             target = Path(folder)
             old = python + ' "' + (target / "hooks/skill_gate.py").as_posix() + '"'
-            config = {"hooks": {"PreToolUse": [{"matcher": "Write", "hooks": [{"type": "command", "command": old}]}]}}
+            user_group = {"matcher": "Write", "hooks": [{"type": "command", "command": old}]}
+            config = {"hooks": {"PreToolUse": [user_group]}}
             file = target / "settings.json"
             file.write_text(json.dumps(config), encoding="utf-8")
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(install_hooks.main(["--claude-dir", str(target), "--python", python]), 0)
-            handlers = [h for group in json.loads(file.read_text())["hooks"]["PreToolUse"] for h in group["hooks"]
-                        if "skill_gate.py" in h["command"]]
-            self.assertEqual(len(handlers), 1)
-            self.assertEqual(shlex.split(handlers[0]["command"])[0], python)
+            groups = json.loads(file.read_text())["hooks"]["PreToolUse"]
+            self.assertIn(user_group, groups)
+            owned = [h for group in groups for h in group["hooks"]
+                     if install_hooks.hook_script(h) == install_hooks.script_identity(target / "hooks/skill_gate.py")]
+            self.assertEqual(len(owned), 1)
+            self.assertEqual(shlex.split(owned[0]["command"])[0], python)
 
     def test_launchers_and_powershell_call_operator(self):
         root = Path("C:/Users/Office/.claude")

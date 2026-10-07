@@ -81,8 +81,110 @@ def script_identity(path):
     return str(Path(value).expanduser().resolve())
 
 
+def command_words(command, powershell=False):
+    """只解析直接呼叫的字串引號；運算式、展開與複合命令不猜測。"""
+    if any(char in command for char in "\r\n\0"):
+        raise ValueError("非單行呼叫")
+    if powershell:
+        if any(char in command for char in "‘’“”"):
+            raise ValueError("未支援的 PowerShell 引號")
+        command = re.sub(r";\s*exit\s+\$LASTEXITCODE\s*$", "", command, flags=re.I)
+        if command.lstrip().startswith(("'", '"')):
+            raise ValueError("PowerShell 字串不是呼叫")
+    words, word, quote, started = [], [], None, False
+    index = 0
+    while index < len(command):
+        char = command[index]
+        following = command[index + 1:index + 2]
+        if char == quote:
+            if powershell and following == quote:
+                word.append(char)
+                index += 2
+                continue
+            quote = None
+        elif quote != "'" and char == ("`" if powershell else "\\"):
+            if not following:
+                raise ValueError("未完成的跳脫")
+            if powershell and following in "0abefnrtvu":
+                raise ValueError("非路徑跳脫")
+            if not powershell and quote == '"' and following not in '\\"$`':
+                word.append(char)
+            else:
+                word.append(following)
+                index += 1
+        elif quote:
+            if quote == '"' and char in ("$" if powershell else "$`"):
+                raise ValueError("動態字串")
+            word.append(char)
+        elif char in "'\"":
+            quote = char
+            started = True
+        elif char in " \t":
+            if started:
+                words.append("".join(word))
+                word, started = [], False
+            index += 1
+            continue
+        elif char.isspace():
+            raise ValueError("非標準空白")
+        elif powershell and char == "&" and not words and not started:
+            words.append("&")
+            index += 1
+            continue
+        elif char in ("$;&|<>(){}@,#" if powershell else "$`;&|<>(){}*?[]#~"):
+            raise ValueError("非直接呼叫")
+        else:
+            word.append(char)
+        started = True
+        index += 1
+    if quote:
+        raise ValueError("未完成的引號")
+    if started:
+        words.append("".join(word))
+    return words
+
+
+def python_script(argv):
+    """依 CPython 選項語法找第一個腳本參數，未知選項則保留原設定。"""
+    def interpreter(value):
+        return re.fullmatch(r"(?:pythonw?(?:\d+(?:\.\d+)*)?|pyw?|pypy\d*)(?:\.exe)?",
+                            PureWindowsPath(value).name, re.I)
+    if not argv:
+        return None
+    executable, index = argv[0], 1
+    if not interpreter(executable):
+        return None
+    launcher = PureWindowsPath(executable).stem.lower() in ("py", "pyw")
+    while index < len(argv):
+        arg = argv[index]
+        index += 1
+        if arg == "--":
+            return script_identity(argv[index]) if index < len(argv) and argv[index] else None
+        if arg == "-" or not arg:
+            return None
+        if not arg.startswith("-"):
+            return script_identity(arg)
+        if launcher and re.fullmatch(r"-(?:[23](?:\.\d+)?(?:-32|-64)?|V:[\w./-]+)", arg):
+            continue
+        if arg.startswith("--"):
+            if arg == "--check-hash-based-pycs" and index < len(argv) and argv[index] in ("default", "always", "never"):
+                index += 1
+                continue
+            return None
+        for offset, option in enumerate(arg[1:], 1):
+            if option in "cmhV?" or option not in "bBdEiIOPqRsSuvxWX":
+                return None
+            if option in "WX":
+                if offset == len(arg) - 1:
+                    if index >= len(argv):
+                        return None
+                    index += 1
+                break
+    return None
+
+
 def hook_script(hook):
-    """解析 Python 呼叫與本安裝器的 EncodedCommand；不執行指令。"""
+    """辨識直接執行的腳本與本安裝器 EncodedCommand；不執行指令。"""
     if hook.get("type") != "command" or not isinstance(hook.get("command"), str):
         return None
     try:
@@ -92,36 +194,23 @@ def hook_script(hook):
             argv = [hook["command"], *hook["args"]]
             powershell = False
         else:
-            argv = shlex.split(hook["command"])
-            powershell = hook.get("shell") == "powershell"
+            powershell = hook.get("shell") == "powershell" or (
+                "shell" not in hook and hook["command"].lstrip().startswith("&"))
+            argv = command_words(hook["command"], powershell)
+        if not argv:
+            return None
+        if argv[0] == "&":
+            argv = argv[1:]
         if not argv:
             return None
         if PureWindowsPath(argv[0]).name.lower() in ("powershell.exe", "pwsh.exe", "powershell", "pwsh"):
-            flags = [arg.lower() for arg in argv]
-            if "-encodedcommand" not in flags:
+            if len(argv) != 5 or [arg.lower() for arg in argv[1:4]] != ["-noprofile", "-noninteractive", "-encodedcommand"]:
                 return None
-            index = flags.index("-encodedcommand") + 1
-            decoded = base64.b64decode(argv[index], validate=True).decode("utf-16-le")
-            argv = shlex.split(decoded)
-            powershell = True
+            decoded = base64.b64decode(argv[4], validate=True).decode("utf-16-le")
+            argv = command_words(decoded, powershell=True)
         if argv and argv[0] == "&":
             argv = argv[1:]
-            powershell = True
-        for index, arg in enumerate(argv[1:], 1):
-            path = arg.rstrip(";")
-            if powershell:
-                path = re.sub(r"`(.)", r"\1", path)
-            if not path.lower().endswith(".py"):
-                continue
-            prefix = argv[:index]
-            if "-c" in prefix or "-m" in prefix:
-                return None
-            # 舊版未引用的 Python 完整路徑可能被切成數個 token。
-            end = next((i for i, token in enumerate(prefix) if token.startswith("-")), len(prefix))
-            executable = PureWindowsPath(" ".join(prefix[:end])).name
-            if re.fullmatch(r"(?:pythonw?(?:\d+(?:\.\d+)*)?|pyw?|pypy\d*)(?:\.exe)?", executable, re.I):
-                return script_identity(path)
-            return None
+        return python_script(argv)
     except (ValueError, UnicodeError, IndexError):
         pass
     return None
@@ -135,8 +224,7 @@ def add_hook(settings, event, matcher, command, shell=None, script_path=None):
     for group in groups:
         survivors = []
         for hook in group.get("hooks", []):
-            owned = hook.get("type") == "command" and (hook.get("command") == command or
-                                                       (identity is not None and hook_script(hook) == identity))
+            owned = identity is not None and hook_script(hook) == identity
             if not owned:
                 survivors.append(hook)
                 continue
@@ -228,7 +316,7 @@ def main(argv=None):
                 return 2
             owned = (re.fullmatch(r'.+?\s+"' + re.escape((claude_dir / "hooks" / "context_status.py").as_posix())
                                  + r'"(?P<forward> --forward "[^"\r\n]+")?', old["command"]) if old else None)
-            if owned:
+            if owned and hook_script(old) == script_identity(claude_dir / "hooks" / "context_status.py"):
                 # 更新 Python 指令也不可把 wrapper 備存成自己的 original。
                 command += owned["forward"] or ""
                 if command != old["command"]:
@@ -243,7 +331,7 @@ def main(argv=None):
     if args.platform == "codex":
         for group in settings["hooks"]["SessionStart"]:
             for hook in group.get("hooks", []):
-                if "session_start.py" in hook.get("command", "") or hook.get("command") == hook_command("session_start.py"):
+                if hook_script(hook) == script_identity(claude_dir / "hooks" / "session_start.py"):
                     if hook.get("additionalContextLimit") != 0:
                         hook["additionalContextLimit"] = 0
                         changed.append(True)
