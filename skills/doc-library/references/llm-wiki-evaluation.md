@@ -39,7 +39,7 @@
 - 摘要頁、主題頁只放文件清單、指向原文頁碼的連結與原文逐字引文；陳述一律附出處。
 - 任何要告訴使用者的結論，先回原文核對。
 - 主題頁記錄所依據的來源檔 sha256，原檔變動後視為過期。
-- 衍生 Markdown 與業務欄位附 `citations` 與驗證狀態；狀態依 [合約欄位定義](https://github.com/brianfan0418/claude-contract-kit/blob/main/schema/fields.json)，OCR 文字尚未對照影像屬「未驗證」。
+- 衍生 Markdown 與業務欄位附 `citations` 與驗證狀態；狀態依 `claude-contract-kit/schema/fields.json` 的合約欄位定義，OCR 文字尚未對照影像屬「未驗證」。
 
 ## 與原文的主要差異
 

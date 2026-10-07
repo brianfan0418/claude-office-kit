@@ -48,7 +48,7 @@ frontmatter 是 Markdown 檔最前面、以兩行 `---` 包起來的一段「欄
 - 可檢查：欄位固定，缺欄或過期可由腳本機械檢查，不靠印象。
 - 可篩選：業務欄位集中在同一個位置。
 
-轉檔通用鍵為 `converter`、`ocr`、`ocr_engine`、`ocr_pages`、`source_path`、`source_sha256`、`source_modified`、`converted_at`、`pages`、`title`；工具另記錄轉檔警告與複核旗標。業務欄位由各領域定義；合約見 [合約欄位定義](https://github.com/brianfan0418/claude-contract-kit/blob/main/schema/fields.json)。轉檔行為與限制見 `${CLAUDE_PLUGIN_ROOT}/tools/README-convert-docs.md`。
+轉檔通用鍵為 `converter`、`ocr`、`ocr_engine`、`ocr_pages`、`source_path`、`source_sha256`、`source_modified`、`converted_at`、`pages`、`title`；工具另記錄轉檔警告與複核旗標。業務欄位由各領域定義；合約見 `claude-contract-kit/schema/fields.json` 的合約欄位定義。轉檔行為與限制見 `${CLAUDE_PLUGIN_ROOT}/tools/README-convert-docs.md`。
 
 - 只填原文明文寫出的內容。原文沒寫、看不出來就依領域規則留空或標示未載明，不推算。
 - 引用一律存於 `citations`，格式與必填條件依領域定義；合約依上述 schema 與 contract-intake 流程處理。
@@ -57,7 +57,7 @@ frontmatter 是 Markdown 檔最前面、以兩行 `---` 包起來的一段「欄
 
 ## 驗證狀態
 
-驗證狀態依 [合約欄位定義](https://github.com/brianfan0418/claude-contract-kit/blob/main/schema/fields.json) 的 `verification_status` 列舉，不另訂狀態或格式。OCR 文字尚未對照影像屬「未驗證」；只有依領域驗證流程確認原檔與欄位相符後，才可標「已驗證」，確認不符則標「驗證不符」。
+驗證狀態依 `claude-contract-kit/schema/fields.json` 的合約欄位定義 的 `verification_status` 列舉，不另訂狀態或格式。OCR 文字尚未對照影像屬「未驗證」；只有依領域驗證流程確認原檔與欄位相符後，才可標「已驗證」，確認不符則標「驗證不符」。
 
 使用者要據以簽約、發函、報價的內容，須為「已驗證」。無法開啟原檔或對照影像時，維持「未驗證」並說明缺少的依據。
 

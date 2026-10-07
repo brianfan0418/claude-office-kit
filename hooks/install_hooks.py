@@ -26,7 +26,10 @@ PRETOOL_MATCHER = "Bash|PowerShell|Edit|Write|MultiEdit"
 
 def command_for(python, claude_dir, script):
     path = (claude_dir / "hooks" / script).as_posix()
-    return f'{python} "{path}"'
+    command = f'{python} "{path}"'
+    if script == "session_start.py":
+        command += f' --tools-dir "{(HERE.parent / "tools").as_posix()}"'
+    return command
 
 
 def add_hook(settings, event, matcher, command):
@@ -36,6 +39,10 @@ def add_hook(settings, event, matcher, command):
         for hook in group.get("hooks", []):
             if hook.get("command") == command:
                 return False
+            # 本安裝器舊版的同一指令升級為附 tools-dir 的版本，避免兩次開場輸出。
+            if event == "SessionStart" and command.startswith(hook.get("command", "") + " --tools-dir "):
+                hook["command"] = command
+                return True
     groups.append({"matcher": matcher, "hooks": [{"type": "command", "command": command}]})
     return True
 

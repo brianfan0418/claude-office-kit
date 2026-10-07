@@ -2,6 +2,8 @@
 
 本指南供您與您的 AI 參考，建議依您的工作及現有環境選用資源，由您逐項選擇。讀取本指南不授權批次安裝，也不授權寄信、提交表單或公開發布。
 
+Codex 與 Claude 均可協助資源盤點、派工、執行與驗收；以下 Claude Code／Cowork 欄說明的是不同執行環境，資源選擇不預設其中一個 AI 較高或較低。
+
 ## 工作與環境的建議盤點
 
 1. 建議詢問工作種類、希望改善的問題、正式文件的核對方式、是否跨對話接手，以及現有規則與文件庫。
@@ -35,6 +37,15 @@
 | `convert_docs.py` | 建議依轉檔說明，只安裝選定格式所需依賴；以 `--help`、虛構檔轉換與 `--lint` 驗證 | 建議外掛附轉檔程式與說明；在 Cowork 確認依賴，輸出寫至授權工作資料夾，不寫入外掛安裝目錄 |
 | `outlook-watch.py` | 建議依 Outlook 說明在 Windows、傳統版 Outlook 與 pywin32 環境測試；工作排程器由使用者另行選擇 | 建議Cowork 執行 Windows Outlook COM 的能力未查證；若主機已有 inbox，可讀授權的匯出資料夾；外掛不等於 Outlook 連接器，也不安裝排程 |
 | `plugin/`／`build_plugin.py` | 建議可用 `claude --plugin-dir "<office-kit>/plugin"` 測試；已有單獨 skills／hooks 時先避免重複載入 | 建議依下一節裁減與封裝後，上傳自訂外掛；可沿用您目前的介面 |
+| `knowledge/codex-models.md` | 建議由任一 AI 依官方來源及日期選模型，知識可複製到私人工作區 | 建議選入外掛 `knowledge/` 供查閱；需自動更新時另複製到授權工作區，外掛副本維持唯讀 |
+| `codex-quota.py`／`claude-quota.py` | 建議查目前 Codex 登入帳號；Claude 查 `/usage`，企業即時剩餘額度 API 未查得 | 建議先核對能否存取主機 CLI；不能執行時使用產品 Usage 畫面，不以空值代替剩餘額度 |
+| `codex-autoupdate.py` | 建議先 dry-run，再按工具說明選用升級與收件匣通知；不自動設排程 | 建議由主機上的 Codex／Claude 管理 CLI 更新；Cowork 內存取主機 npm 與登入尚未驗證，知識請更新私人工作區副本 |
+| `official-docs-fetch.py` | 建議下載到私人參考目錄；重跑更新，先看 manifest 的成功／失敗及日期 | 建議僅在當前環境有 Python 及網路時下載到授權資料夾；也可讀取主機已下載文件 |
+| `codex-run.py`／`codex-queue.py`／`dispatch-status.py` | 建議背景送出／等待，以摘要 JSON 及回覆核對結果；預設不需 Git | 建議僅在實際可執行 CLI 時使用；無法執行時另開獨立任務，Windows Job Object 與主機分離行程整合未驗證 |
+| `doc-audit.py` | 建議以修改時間及本機連結核對文件落差，Git 檢查選用 | 建議對授權工作資料夾執行；修改時間只作線索，不自動改寫使用者文件 |
+| `registry.py`／`REGISTRY.md`／`INDEX.md` | 建議寫新工具前先查登記表，修改檔頭或 frontmatter 後重建 | 建議查閱外掛附的登記表及知識索引；私人新增資源的索引寫在工作區，不修改安裝副本 |
+
+以上新增工具的指令、來源與 Windows 排程器說明見 [README-ai-management.md](tools/README-ai-management.md)。建議先以虛構工作驗證選定項目，再由您與 AI 決定是否排程；本工具包及外掛都不建立排程。
 
 ## Cowork 外掛結構與封裝
 
@@ -48,6 +59,7 @@ plugin/
   hooks/session_start.py
   hooks/block_dangerous.py
   tools/                    所附 Python 程式與說明
+  knowledge/                模型知識及自動產生索引
   README.md
 ```
 
@@ -55,7 +67,7 @@ manifest 位於 `.claude-plugin/`，skills 與 hooks 位於外掛根目錄。hoo
 
 如需封裝，建議由您的 AI 協助：
 
-1. 建議執行 `python "<office-kit>/tools/build_plugin.py" --out "<工作區>/待封裝外掛"` 建立完整副本；在該副本移除未採用的 skill 目錄，並從 `hooks/hooks.json` 移除未採用的事件。未採用任何 hook 時移除該設定檔與程式；doc-library／轉檔未採用時可移除 `tools/`。
+1. 建議執行 `python "<office-kit>/tools/build_plugin.py" --out "<工作區>/待封裝外掛"` 建立完整副本；在該副本移除未採用的 skill 目錄，並從 `hooks/hooks.json` 移除未採用的事件。未採用任何 hook 時移除該設定檔與程式；轉檔、Outlook、工作管理均未採用時可移除 `tools/`。只留部分工具時，建議按工具說明保留相依的 `office_common.py`、`codex_rpc.py`、`registry.py` 與 `win_memory.py`；模型知識未採用時可移除 `knowledge/`。
 2. 建議用 `claude plugin validate "<工作區>/待封裝外掛"` 驗證；CLI 不可用時核對 manifest JSON、skill frontmatter、hook JSON 與所指檔案。這只能確認結構，不代表 Cowork 已實測。
 3. 建議將外掛目錄的「內容」壓成 ZIP，壓縮檔根目錄直接包含 `.claude-plugin/plugin.json`，不要多包一層。依官方製作 skill，ZIP 可命名為 `office-work-kit.plugin`。Windows 壓縮工具須確認包含隱藏目錄 `.claude-plugin/`；使用 Python `zipfile` 可避免漏檔。
 4. 建議依 [官方使用說明](https://support.claude.com/en/articles/13837440-use-plugins-in-claude)，在桌面版先進 Cowork，再開 Customize → Plugins，上傳自訂外掛檔；企業限制安裝時由管理員處理。官方支援自訂外掛上傳，本版桌面 UI 的按鈕位置與上傳流程未實測。
@@ -65,6 +77,6 @@ manifest 位於 `.claude-plugin/`，skills 與 hooks 位於外掛根目錄。hoo
 
 ## 合約資源另行選擇
 
-需要合約登錄、比對或初審時，建議閱讀 [claude-contract-kit](https://github.com/brianfan0418/claude-contract-kit) 的 README，逐項決定採用該 repo 的 skills 與手冊。確認兩個 repo 的本機位置，各自使用根目錄路徑；合約資料放在私人工作資料夾。doc-library 只負責轉檔與查詢，轉檔完成不代表合約欄位已驗證。
+需要合約登錄、比對或初審時，建議閱讀 `claude-contract-kit`（請沿用您取得合約工具包的位置） 的 README，逐項決定採用該 repo 的 skills 與手冊。確認兩個 repo 的本機位置，各自使用根目錄路徑；合約資料放在私人工作資料夾。doc-library 只負責轉檔與查詢，轉檔完成不代表合約欄位已驗證。
 
 AI 若需追蹤自身修改可選用 Git。

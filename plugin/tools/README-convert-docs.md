@@ -13,7 +13,7 @@
 | .md | 保留內文與領域 frontmatter，重建通用來源鍵；不複製來源的驗證狀態 |
 | 其他格式 | 不處理，執行結束時列出檔名 |
 
-每份衍生檔開頭是 YAML frontmatter；欄位定義見 [合約欄位定義](https://github.com/brianfan0418/claude-contract-kit/blob/main/schema/fields.json) 的 `frontmatter`，下表說明轉檔行為。
+每份衍生檔開頭是 YAML frontmatter；欄位定義見 `claude-contract-kit/schema/fields.json` 的合約欄位定義 的 `frontmatter`，下表說明轉檔行為。
 
 | 欄位 | 內容 |
 |---|---|
@@ -29,8 +29,8 @@
 | `title` | 以檔名預填；contract-intake 核對並驗證後覆寫同一鍵，整份 frontmatter 只有一個 title |
 | `warnings` | 轉換可能漏掉的內容（追蹤修訂、頁首頁尾、註解、文字方塊、OCR 風險等） |
 | `needs_review` | 原檔更新後，沿用的業務欄位尚待人工複核 |
-| `verification_status` | 新轉與重轉均為「未驗證」；狀態定義見 [合約欄位定義](https://github.com/brianfan0418/claude-contract-kit/blob/main/schema/fields.json) |
-| 業務欄位區 | 由各領域定義與填寫；合約見 [合約欄位定義](https://github.com/brianfan0418/claude-contract-kit/blob/main/schema/fields.json)；重轉保留領域欄位，但須重新驗證 |
+| `verification_status` | 新轉與重轉均為「未驗證」；狀態定義見 `claude-contract-kit/schema/fields.json` 的合約欄位定義 |
+| 業務欄位區 | 由各領域定義與填寫；合約見 `claude-contract-kit/schema/fields.json` 的合約欄位定義；重轉保留領域欄位，但須重新驗證 |
 
 另外產生：
 

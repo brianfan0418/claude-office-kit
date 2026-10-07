@@ -1,53 +1,46 @@
 # 交接
 
-最後更新：2026-10-07 B18（台灣時間）
+最後更新：2026-10-07（K1）
 
-## 現況
+## 現況與決定
 
-本 repo 為逐項選用的通用工作資源目錄；合約工具位於 [claude-contract-kit](https://github.com/brianfan0418/claude-contract-kit)。B14 的採用建議文件由 Codex commit 並 push。
+本 repo 是供使用者與 Codex／Claude 逐項選用的通用 AI 工作資源，不預設整套安裝或建立排程。交付環境預設不用 Git；AI 可選用 Git 追蹤自身修改。本開發 repo 維持 commit 與 push。
 
-## 完成項目與決定
+- 合約資源已拆至獨立的 `claude-contract-kit`；請沿用取得該工具包的位置。本輪去識別檢查要求僅保留本 repo 的識別網址，故其他 repo 的作者網址改為資源名稱與檔案位置。
+- `README.md`、`GUIDE-FOR-CLAUDE.md` 使用建議語氣，列 Claude Code／Cowork 的使用與未驗證範圍；Codex 與 Claude 均可協助選用、執行及驗收。
+- 公司核准的企業版 Claude／Codex 派工不視為對外行為；寄信、提交表單及公開發布仍依使用者工作規則處理。
+- 原始資源在 `skills/`、`hooks/`、`tools/`、`knowledge/`；`plugin/` 是 `tools/build_plugin.py` 產生的副本，直接修改會被重建覆寫。外掛名為 `office-work-kit`，本版為 0.2.0。
 
-- `README.md` 列出每項資源用途與情境；`GUIDE-FOR-CLAUDE.md` 先了解使用者工作、平台與既有設定，再逐項採用，各項均列 Claude Code 與桌面版 Cowork 用法。
-- `templates/CLAUDE.md`、`skills/codex-dispatch/SKILL.md` 移除文件傳送的額外同意要求；公司核准的企業版 Claude／Codex 派工不視為對外。寄信、提交表單與公開發布仍先取得同意。
-- doc-library、轉檔說明與本交接已改用獨立合約 repo 的 GitHub 連結。
-- `plugin/` 依官方格式包含六個 skills、兩個 hooks 及所需工具；`tools/build_plugin.py` 從原始資源重建，`--check` 核對副本。第三方外掛名稱使用 `office-work-kit`，因官方驗證器禁止 `claude-` 前綴；repo 名稱維持不變。
-- 外掛安裝前在封裝副本裁減未採用的資源，不預設全部安裝。外掛結構與封裝依據集中於採用指南，維護原始資源後重建副本。
+## K1 資源與參考依據
+
+各項官方網址與操作說明集中於 `tools/README-ai-management.md`。以下本機實作均只參考行為，再改寫為去識別、標準函式庫與 Windows 路徑版本，不保留其帳號、服務或排程。
+
+| 項目 | 本機參考 | 公開版本與決定 |
+|---|---|---|
+| 模型知識 | codex-cli.md 的模型／額度／派工節、CLI 0.160.1 models_cache.json | knowledge/codex-models.md，日期及可見模型快照；CLI 預設強度與 API 分開說明 |
+| 額度 | codex-quota.py、claude-quota.py | 同名工具：Codex 用官方 App Server；Claude 改用官方入口與限制說明，不呼叫非公開 OAuth 端點 |
+| CLI 更新 | codex-autoupdate.py | 同名工具：npm 新版升級、短回覆實測、回退核對；清單變動更新知識與 INDEX、UTF-8 收件匣通知；不改預設模型 |
+| 官方文件 | official-docs-fetch.py | 同名工具：四組官方索引、一頁一檔及 manifest；Claude Code 失效轉址可由官方 llms-full.txt 分頁備援 |
+| 派工與總覽 | codex-run.py、codex-queue.py、dispatch-status.py | 同名精簡工具：背景 worker、wait/status、結果與摘要；不用 systemd，Windows Job Object 限制選用 |
+| 文件落差 | doc-audit.py | 同名工具：mtime、登記表內容與本機連結；Git 由 --git 啟用；時間只作待核對線索 |
+| 登記表 | registry.py | 同名工具：工具 docstring 與單行 frontmatter 產生 REGISTRY／INDEX；外掛表只列實際封裝工具 |
+| Hooks | block-dangerous.py 的 FG_WAIT、session-brief.py | block_dangerous.py 去除文字／heredoc 再攔前景等待；session_start.py 有事項才附狀態與落差摘要，同 session 抑制重複 |
+
+新工具的共用依賴為 `office_common.py`、`codex_rpc.py`、`win_memory.py`；選擇部分工具時見採用指南。工具本身不建立 Windows 排程，指南提供選用操作步驟。
 
 ## 已完成驗證
 
-2026-10-07 B11：依 [gist 官方頁面](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) 頁首核對 LLM Wiki 構想文建立日期為 2026-04-04，更新評估原檔並以 build_plugin.py 重建副本。兩份日期來源一致。hooks 10 tests、tools 51 tests 全過且無略過；tools 在一次性虛擬環境安裝 markitdown[docx,pdf]、python-docx、reportlab 後包含真實 DOCX／PDF 轉換。外掛 24 個副本核對及 plugin validate 通過；驗收指定去識別規則排除 .git 後零命中。未修改辦公工具程式；本機 commit 由使用者 push。
-
-
-```text
-python3 -m unittest discover -s hooks         10 tests，OK
-python3 -m unittest discover -s tools         51 tests，OK，無略過
-python3 tools/build_plugin.py --check         OK，24 個檔案
-claude plugin validate plugin                Validation passed
-```
-
-測試在 Linux 執行；tools 套件在一次性虛擬環境安裝 markitdown[docx,pdf]、python-docx 與 reportlab 後執行，包含真實 DOCX／PDF 轉換。Word 與 Outlook COM 使用假物件。本輪完整指令及輸出保存於派工交付物 `test-results.txt`，不納入公開 repo。
-
-公開工作樹去識別掃描零命中，Markdown 本機連結與 `git diff --check` 通過；未留下失效的拆分前合約路徑。
+- Linux：hooks 18 tests、tools 88 tests 通過，無略過；tools 的一次性環境含 markitdown[docx,pdf]、python-docx、reportlab，包含真實 DOCX／PDF 轉換。Windows Word／Outlook COM 仍使用假物件。
+- 新增測試含前景等待該擋／不該擋、開場摘要、背景派工／等待／重複輸出拒絕、UTF-8、查詢逾時、更新／回退／通知、下載失敗保留、文件落差與索引。
+- 真實 Codex App Server 模型與額度查詢通過；模型 refresh-only dry-run 通過。模型知識以同一更新程式從必要快取欄位產生；不匯出 identity 等額外欄位。
+- 四組官方來源共 554 頁全部取得，含 1 頁官方完整文字版備援；結果以派工交付物的驗證摘要保存，下載原檔在暫存目錄，不進公開 repo。
+- 外掛 40 個檔案副本核對及官方 `claude plugin validate plugin` 通過；完整命令輸出保存於本次派工交付物。Markdown 本機連結、登記表與去識別掃描於提交前核對。
 
 ## 未驗證與接續動作
 
-1. 在目標 Windows 或 Cowork，以虛構檔案依指南逐項驗證選定資源。官方已確認 Cowork 支援 skills 與 hooks，但本套 Python hooks 的 matcher、工作目錄、Python 指令及實際觸發未驗證。
-2. Cowork 讀取主機 Codex CLI／企業登入、Outlook COM、OCR 工具與 GPU 的整合未查證；指南不能當成主機程式已可使用的證據。
-3. Windows 真實 Word／Outlook、工作排程器與桌面版外掛上傳尚未實測；需要時由使用者選定環境與資源後測試。
+第一個可執行動作：在目標 Windows 用虛構交辦驗證已選工具的 submit → wait → result／summary，再重開所選 AI 介面確認 hook 的實際觸發。
 
-## B14：採用指南語氣
-
-GUIDE-FOR-CLAUDE.md 及 README 改為供您與您的 AI 參考的建議語氣，盤點、資源選擇、封裝及驗證步驟維持具體。既有同意範圍與對外動作限制保留；不預設整套安裝。Git 維持選用，Codex 與 Claude 均可協助。
-
-文件變更驗證：hooks 10 tests 通過；tools 51 tests 通過，其中 1 項依既有 Windows COM 條件跳過；外掛 --check 24 檔一致。Windows Cowork、Word COM 與 Outlook 實機限制仍依既有驗證節。
-
-## B15：版本紀錄預設
-
-2026-10-07 使用者決定：交付環境預設不用 Git，文件版本與處理紀錄由系統負責；AI 若需追蹤自身修改可選用。templates、GUIDE、project-docs 與外掛副本同步取消 git init／commit 的預設要求；既有開發 repo 的維護規則仍沿用。驗證：hooks 10 tests、tools 51 tests（1 個 Windows COM 條件跳過）通過；外掛 --check 24 檔一致。
-
-## B18：非 Git 派工與 AI 平等
-
-Codex 派工預設使用一般資料夾，前景、背景及接續範例加入 `--skip-git-repo-check`；還原建議以檔案備份為準，Git 僅供 AI 選用。旗標已以本機 CLI help 核對。文件庫抽欄位、判讀、摘要與相關工具說明均適用 AI（Codex、Claude 皆可）；原檔唯讀及逐項原文核對規則保留，外掛副本由 build_plugin.py 同步。
-
-驗證：hooks 10 tests、tools 51 tests 全過且無略過（一次性環境含 markitdown[docx,pdf]、reportlab）；外掛 24 檔一致，官方 plugin validate 通過。Windows Word／Outlook COM 仍以假物件測試，Windows 實機限制維持。
+1. Windows npm／Node 入口、分離 worker、Job Object、PowerShell 及工作排程器尚未在實機驗證；升級安裝與回退採替身測試，本輪不升級維護者正在使用的 CLI。
+2. Cowork 的主機 CLI／企業登入、Python hook matcher、工作目錄、Outlook COM、OCR／GPU 整合未驗證。官方結構驗證通過不表示上述整合已生效。
+3. Claude 企業的即時剩餘訂閱額度公開 API 未查得；企業 Analytics API 是延遲用量／成本資料，不能當作即時餘額。本工具只提供官方可用入口，不要求管理員憑證。
+4. `mtime` 可能因複製或封裝變動而提示落差，建議人工核對內容；Git 缺少不影響其他檢查。無 hook 提示亦不表示所有檢查通過，直接執行工具可核對結果。

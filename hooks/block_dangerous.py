@@ -7,6 +7,7 @@
   3. git push --force（含 --force-with-lease、-f、+分支）
   4. git reset --hard
   5. 以指令修改 .claude/settings.json 或 .claude/hooks/ 底下的檔案
+  6. 前景等待派工或 sleep 輪詢（可用工具的背景執行功能等待）
 Edit、Write 工具要修改上述設定檔時，不直接拒絕，改為請使用者在畫面上確認。
 
 輸出格式依 Claude Code 官方文件（https://code.claude.com/docs/en/hooks）：
@@ -63,6 +64,32 @@ REASON_SELF = (
     "請先向使用者說明要改什麼與原因，取得同意後，由使用者在畫面上確認 Edit 工具的變更；不要用指令繞過。"
 )
 
+FG_WAIT = re.compile(
+    r"\bcodex-run\.py\s+wait\b|\bcodex-queue\.py\s+--"
+    r"|\b(?:for|while|until)\b.*?\bdo\b.*?\bsleep\s+\d"
+    r"|\b(?:while|foreach|for)\s*\(.*?\).*?\bStart-Sleep\b", re.I | re.S)
+
+
+def foreground_wait(command, background=False):
+    """忽略 heredoc／here-string 與文字參數；保留引號中的工具路徑。"""
+    if background:
+        return False
+    view = re.sub(r"(<<-?\s*(['\"]?)(\w+)\2[^\n]*)\n.*?\n\s*\3[ \t]*(?=\n|$)", r"\1", command, flags=re.S)
+    view = re.sub(r"(?ms)@(['\"])\r?\n.*?^\1@", " ", view)
+
+    def quoted(match):
+        value = match.group(2)
+        # Windows 常以引號包工具的完整路徑，這仍是要執行的指令。
+        if re.fullmatch(r"[^\r\n]*[/\\]codex-(?:run|queue)\.py", value, re.I) or value in ("codex-run.py", "codex-queue.py"):
+            return " " + re.split(r"[/\\]", value)[-1] + " "
+        return " "
+
+    view = re.sub(r"(['\"])(.*?)(?<!\\)\1", quoted, view, flags=re.S)
+    # help 只顯示用法，沒有等待。
+    view = "\n".join(part for part in re.split(r"&&|\|\||[;\n]", view)
+                     if not re.search(r"\s--help\b", part))
+    return bool(FG_WAIT.search(view))
+
 
 def writes_protected(command):
     """指令是否真的要寫入受保護的設定；只是讀取或把它當來源備份不算。"""
@@ -103,6 +130,8 @@ def evaluate(data):
     tool = data.get("tool_name", "")
     tool_input = data.get("tool_input") or {}
     if tool in ("Bash", "PowerShell"):
+        if foreground_wait(tool_input.get("command") or "", tool_input.get("run_in_background", False)):
+            return ("deny", "已攔截：前景等待派工或輪詢。建議用工具的背景執行功能（run_in_background: true）等待 codex-run.py；查單次進度可用 status。PowerShell 可在獨立終端等待，讓目前對話保持可用。")
         reason = check_command(tool_input.get("command") or "")
         return ("deny", reason) if reason else None
     if tool in ("Edit", "Write", "MultiEdit"):

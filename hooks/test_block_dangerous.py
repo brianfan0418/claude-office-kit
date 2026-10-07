@@ -126,6 +126,36 @@ class CommandLineInterface(unittest.TestCase):
         self.assertEqual(done.returncode, 0)
         self.assertEqual(done.stdout, b"")
 
+
+class ForegroundWait(unittest.TestCase):
+    def test_block_waits(self):
+        cases = [
+            ("python tools/codex-run.py wait inbox/codex/task", "Bash"),
+            ('py -3 "C:\\AI tools\\codex-run.py" wait "C:\\AI\\out"', "PowerShell"),
+            ("python tools/codex-queue.py --brief task.md --out result", "Bash"),
+            ("while true; do sleep 10; done", "Bash"),
+            ("while ($true) { Start-Sleep -Seconds 10 }", "PowerShell"),
+            ("python tools/codex-run.py wait --help && python tools/codex-run.py wait out", "Bash"),
+        ]
+        for command, tool in cases:
+            with self.subTest(command=command):
+                self.assertEqual(verdict(command, tool)[0], "deny")
+
+    def test_allow_data_status_and_background(self):
+        cases = [
+            "python tools/codex-run.py status out",
+            "python tools/codex-run.py submit --brief task.md --out result",
+            "echo 'python tools/codex-run.py wait out'",
+            "cat > note.txt <<'EOF'\npython tools/codex-run.py wait out\nEOF",
+            'Write-Output "while ($true) { Start-Sleep 10 }"',
+            "python tools/codex-run.py wait --help",
+        ]
+        for command in cases:
+            with self.subTest(command=command):
+                self.assertIsNone(verdict(command))
+        self.assertIsNone(block_dangerous.evaluate({"tool_name": "Bash", "tool_input": {
+            "command": "python tools/codex-run.py wait out", "run_in_background": True}}))
+
     def test_invalid_input_does_not_crash(self):
         done = subprocess.run([sys.executable, os.path.join(HERE, "block_dangerous.py")],
                               input=b"not json", capture_output=True)
