@@ -1,0 +1,15 @@
+steps:
+  - id: python-tests
+    name: python:3.12
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        python -m pip install "markitdown[docx,pdf]" python-docx reportlab
+        python -m unittest discover -s hooks
+        python -m unittest discover -s tools
+        python tools/build_plugin.py --check
+
+timeout: 1200s
+options:
+  logging: CLOUD_LOGGING_ONLY
