@@ -3,7 +3,7 @@ from pathlib import Path
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
-WORKFLOW = ROOT / ".github/workflows/python-tests.yml"
+WORKFLOW = ROOT / ".github/workflows/ci.yml"
 CLOUD_BUILD = ROOT / "cloudbuild.yaml"
 
 TEST_COMMANDS = (
@@ -11,7 +11,7 @@ TEST_COMMANDS = (
     "python -m unittest discover -s tools",
     "python tools/build_plugin.py --check",
 )
-DEPENDENCIES = 'python -m pip install "markitdown[docx,pdf]" python-docx reportlab'
+DEPENDENCIES = '"markitdown[docx,pdf]" python-docx reportlab'
 
 
 class CIConfigTests(unittest.TestCase):
@@ -20,6 +20,7 @@ class CIConfigTests(unittest.TestCase):
             with self.subTest(platform=path):
                 config = path.read_text(encoding="utf-8")
                 self.assertIn(DEPENDENCIES, config)
+                self.assertIn("python -m pip install", config)
                 for command in TEST_COMMANDS:
                     self.assertIn(command, config)
         self.assertTrue(list((ROOT / "hooks").glob("test_*.py")))
@@ -34,7 +35,8 @@ class CIConfigTests(unittest.TestCase):
     def test_cloud_build_has_executable_python_step(self):
         config = CLOUD_BUILD.read_text(encoding="utf-8")
         self.assertIn("name: python:3.12", config)
-        self.assertIn("entrypoint: bash", config)
+        self.assertIn("name: python:3.12-slim", config)
+        self.assertIn("entrypoint: sh", config)
         self.assertIn("      - -ceu", config)
 
 
