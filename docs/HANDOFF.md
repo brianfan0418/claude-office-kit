@@ -1,6 +1,6 @@
 # 交接
 
-最後更新：2026-10-07（K1f）
+最後更新：2026-10-29（PR #2 CI）
 
 ## 現況
 
@@ -49,6 +49,12 @@ N1 成立：新增雙向測試在修改前均重現同位置切換 shell 後多�
 ## K1f 複驗修正
 
 N2 成立：修改前新測試重現附接式 -c／-m、未知選項與自訂執行檔參數誤判。現在只取直譯器選項後的第一個腳本參數；模式／選項值／後續參數不當作腳本。未知語法、動態或複合命令、未引用空白執行檔保留；不再拼接 token 猜直譯器。Codex 開場上限與狀態列備份共用此辨識；原始 handler 與 matcher 保留測試通過。Python／PowerShell 官方依據見開場說明。引號、空白、中文、字面特殊字元、Windows 反斜線／UNC／大小寫及 EncodedCommand 已測；另以 23 組實際 Linux Python 呼叫核對腳本辨識，無差異。
+
+## PR #2 CI 衝突修正
+
+PR #2 `fix/issue-110-ci-config` 合併 `main` 時，`cloudbuild.yaml` 同時被兩邊修改。合併保留 base 的 `python:3.12-slim`、`sh`、pip 版本檢查選項與 verbose 測試輸出，以及 PR 的完整測試步驟與 `CLOUD_LOGGING_ONLY`。base 已有 `.github/workflows/ci.yml`，因此移除 PR 新增的重複 `python-tests.yml`，避免同一 PR 重複執行整套 Actions。`tools/test_ci_config.py` 驗證既有 Actions 與合併後 Cloud Build 設定，並對共用依賴只檢查安裝指令與套件清單。
+
+本機驗證：hooks 70 tests 通過；tools 108 tests 通過、1 skipped；`python tools/build_plugin.py --check` 核對 56 個檔案。Cloud Build 未執行。PR push 後以 GitHub PR checks 與 mergeable 狀態確認遠端結果。
 
 ## 已完成驗證
 
