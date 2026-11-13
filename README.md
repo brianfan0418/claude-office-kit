@@ -61,3 +61,14 @@ Windows 可將 `python3` 換成已確認可用的 `python` 或 `py -3`。回歸�
 ## 授權
 
 MIT，見 [LICENSE](LICENSE)。
+
+## 公開原始碼提交檢查（維護者 VM）
+
+本機 Git `.git/hooks/pre-commit` 呼叫 `python3 "$HOME/workspace/tools/secret-scan.py"`，以 Gitleaks 官方預設規則掃描暫存區 diff。命中只輸出「檔名:行號:規則名」並阻止提交；工具故障也回報失敗。安裝依賴與規則依據見維護者 workspace 的 `tools/secret-scan-README.md`。此 hook 不隨 clone 複製，新 clone 在已安裝共用工具的 VM 上執行：
+
+```sh
+printf '%s\n' '#!/bin/sh' 'exec python3 "$HOME/workspace/tools/secret-scan.py"' > "$(git rev-parse --git-path hooks/pre-commit)"
+chmod +x "$(git rev-parse --git-path hooks/pre-commit)"
+```
+
+本 repo 原先無 Git pre-commit；既有 clone 若已有 hook，應將上述呼叫併入並保留原檢查。
